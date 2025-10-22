@@ -1,0 +1,29 @@
+<?php
+
+use App\Http\Controllers\ResumeController;
+use App\Http\Controllers\ResumeEvaluationController;
+use App\Http\Controllers\TailoredResumeController;
+use Illuminate\Support\Facades\Route;
+use Inertia\Inertia;
+
+Route::get('/', function () {
+    return Inertia::render('Welcome');
+})->name('home');
+
+Route::middleware(['auth'])->group(function () {
+    Route::get('dashboard', function () {
+        return to_route('resumes.index');
+    })->name('dashboard');
+
+    Route::get('resumes', [ResumeController::class, 'index'])->name('resumes.index');
+    Route::post('resumes', [ResumeController::class, 'store'])->name('resumes.store');
+    Route::get('resumes/{resume}', [ResumeController::class, 'show'])->name('resumes.show');
+
+    Route::post('resumes/{resume}/evaluations', [ResumeEvaluationController::class, 'store'])
+        ->name('resumes.evaluations.store');
+    Route::post('evaluations/{evaluation}/tailor', [TailoredResumeController::class, 'store'])
+        ->name('evaluations.tailor');
+});
+
+require __DIR__.'/settings.php';
+require __DIR__.'/auth.php';
