@@ -140,6 +140,7 @@ class ResumeController extends Controller
                     'model' => $evaluation->model,
                     'notes' => $evaluation->notes,
                     'feedback_markdown' => $evaluation->feedback_markdown,
+                    'error_message' => $evaluation->error_message,
                     'completed_at' => $evaluation->completed_at?->toIso8601String(),
                     'job_description' => [
                         'id' => $evaluation->jobDescription->id,

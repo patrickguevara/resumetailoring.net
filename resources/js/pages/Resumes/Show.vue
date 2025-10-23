@@ -6,16 +6,18 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/AppLayout.vue';
+import { userChannel } from '@/lib/realtime';
 import evaluationRoutes from '@/routes/evaluations';
 import jobsRoutes from '@/routes/jobs';
 import resumeRoutes from '@/routes/resumes';
 import type { BreadcrumbItem } from '@/types';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
-import { computed, reactive, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import {
     CalendarClock,
     CircleCheck,
     FileText,
+    Loader2,
     Sparkles,
 } from 'lucide-vue-next';
 
@@ -45,6 +47,7 @@ interface Evaluation {
     model?: string | null;
     notes?: string | null;
     feedback_markdown?: string | null;
+    error_message?: string | null;
     completed_at?: string | null;
     created_at?: string | null;
     job_description: JobDescriptionSummary;
@@ -61,10 +64,46 @@ interface TailoredResume {
     job_description?: JobDescriptionSummary | null;
 }
 
+interface ResumeEvaluationUpdatedPayload {
+    evaluation: {
+        id: number;
+        status: string;
+        headline?: string | null;
+        model?: string | null;
+        notes?: string | null;
+        feedback_markdown?: string | null;
+        error_message?: string | null;
+        completed_at?: string | null;
+        created_at?: string | null;
+        tailored_count?: number;
+        job_description: JobDescriptionSummary | null;
+    };
+}
+
+interface TailoredResumeUpdatedPayload {
+    status: 'completed' | 'failed';
+    evaluation_id: number;
+    error_message?: string | null;
+    tailored_resume?: {
+        id: number;
+        title?: string | null;
+        model?: string | null;
+        content_markdown: string;
+        created_at?: string | null;
+        evaluation_id?: number | null;
+        job_description?: JobDescriptionSummary | null;
+    } | null;
+}
+
 const props = defineProps<{
     resume: ResumeDetail;
     evaluations: Evaluation[];
     tailored_resumes: TailoredResume[];
+}>();
+
+const page = usePage<{
+    errors: Record<string, string>;
+    auth?: { user?: { id: number } | null } | null;
 }>();
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -103,14 +142,50 @@ const availableModels = [
 
 const tailorTitles = reactive<Record<number, string>>({});
 const tailorProcessing = reactive<Record<number, boolean>>({});
+const tailorErrors = reactive<Record<number, string | null>>({});
 const expandedTailored = reactive<Record<number, boolean>>({});
 
-const activeEvaluationId = ref<number | null>(
-    props.evaluations.length > 0 ? props.evaluations[0].id : null,
+const cloneEvaluation = (evaluation: Evaluation): Evaluation => ({
+    ...evaluation,
+    job_description: { ...evaluation.job_description },
+});
+
+const cloneTailored = (tailored: TailoredResume): TailoredResume => ({
+    ...tailored,
+    job_description: tailored.job_description
+        ? { ...tailored.job_description }
+        : null,
+});
+
+const evaluations = ref<Evaluation[]>(
+    props.evaluations.map(cloneEvaluation),
+);
+const tailoredResumes = ref<TailoredResume[]>(
+    props.tailored_resumes.map(cloneTailored),
 );
 
 watch(
-    () => props.evaluations.map((evaluation) => evaluation.id),
+    () => props.evaluations,
+    (value) => {
+        evaluations.value = value.map(cloneEvaluation);
+    },
+    { deep: true },
+);
+
+watch(
+    () => props.tailored_resumes,
+    (value) => {
+        tailoredResumes.value = value.map(cloneTailored);
+    },
+    { deep: true },
+);
+
+const activeEvaluationId = ref<number | null>(
+    evaluations.value.length > 0 ? evaluations.value[0].id : null,
+);
+
+watch(
+    () => evaluations.value.map((evaluation) => evaluation.id),
     (evaluationIds) => {
         evaluationIds.forEach((id) => {
             if (tailorTitles[id] === undefined) {
@@ -119,6 +194,10 @@ watch(
 
             if (tailorProcessing[id] === undefined) {
                 tailorProcessing[id] = false;
+            }
+
+            if (tailorErrors[id] === undefined) {
+                tailorErrors[id] = null;
             }
         });
 
@@ -133,7 +212,7 @@ watch(
 );
 
 watch(
-    () => props.tailored_resumes.map((tailored) => tailored.id),
+    () => tailoredResumes.value.map((tailored) => tailored.id),
     (tailoredIds) => {
         tailoredIds.forEach((id) => {
             if (expandedTailored[id] === undefined) {
@@ -157,18 +236,18 @@ watch(
     },
 );
 
-const hasEvaluations = computed(() => props.evaluations.length > 0);
-const hasTailoredResumes = computed(() => props.tailored_resumes.length > 0);
+const hasEvaluations = computed(() => evaluations.value.length > 0);
+const hasTailoredResumes = computed(() => tailoredResumes.value.length > 0);
 
 const activeEvaluation = computed(
     () =>
-        props.evaluations.find(
+        evaluations.value.find(
             (evaluation) => evaluation.id === activeEvaluationId.value,
         ) ?? null,
 );
 
 const activeEvaluationTailored = computed(() =>
-    props.tailored_resumes.filter(
+    tailoredResumes.value.filter(
         (tailored) => tailored.evaluation_id === activeEvaluationId.value,
     ),
 );
@@ -239,6 +318,7 @@ const generateTailored = (evaluation: Evaluation | null) => {
     }
 
     tailorProcessing[evaluation.id] = true;
+    tailorErrors[evaluation.id] = null;
 
     router.post(
         evaluationRoutes.tailor.url({ evaluation: evaluation.id }),
@@ -247,7 +327,7 @@ const generateTailored = (evaluation: Evaluation | null) => {
         },
         {
             preserveScroll: true,
-            onFinish: () => {
+            onError: () => {
                 tailorProcessing[evaluation.id] = false;
             },
             onSuccess: () => {
@@ -261,9 +341,149 @@ const toggleTailoredPreview = (id: number) => {
     expandedTailored[id] = !expandedTailored[id];
 };
 
-const page = usePage<{
-    errors: Record<string, string>;
-}>();
+const handleResumeEvaluationUpdated = (
+    payload: ResumeEvaluationUpdatedPayload,
+) => {
+    const jobDescription = payload.evaluation.job_description
+        ? { ...payload.evaluation.job_description }
+        : {
+              id: payload.evaluation.id,
+              title: 'Job description',
+              url: null,
+              source_label: 'Job description',
+              is_manual: true,
+              company: null,
+          };
+
+    const normalized: Evaluation = {
+        id: payload.evaluation.id,
+        status: payload.evaluation.status,
+        headline: payload.evaluation.headline ?? null,
+        model: payload.evaluation.model ?? null,
+        notes: payload.evaluation.notes ?? null,
+        feedback_markdown: payload.evaluation.feedback_markdown ?? null,
+        error_message: payload.evaluation.error_message ?? null,
+        completed_at: payload.evaluation.completed_at ?? null,
+        created_at: payload.evaluation.created_at ?? null,
+        job_description: jobDescription,
+        tailored_count: payload.evaluation.tailored_count ?? 0,
+    };
+
+    const existingIndex = evaluations.value.findIndex(
+        (evaluation) => evaluation.id === normalized.id,
+    );
+
+    if (existingIndex >= 0) {
+        evaluations.value.splice(existingIndex, 1, normalized);
+    } else {
+        evaluations.value = [normalized, ...evaluations.value];
+    }
+
+    if (tailorTitles[normalized.id] === undefined) {
+        tailorTitles[normalized.id] = '';
+    }
+
+    if (tailorProcessing[normalized.id] === undefined) {
+        tailorProcessing[normalized.id] = false;
+    }
+
+    if (tailorErrors[normalized.id] === undefined) {
+        tailorErrors[normalized.id] = null;
+    }
+
+    if (
+        activeEvaluationId.value === null ||
+        !evaluations.value.some(
+            (evaluation) => evaluation.id === activeEvaluationId.value,
+        )
+    ) {
+        activeEvaluationId.value = evaluations.value[0]?.id ?? null;
+    }
+};
+
+const handleTailoredResumeUpdated = (
+    payload: TailoredResumeUpdatedPayload,
+) => {
+    if (tailorProcessing[payload.evaluation_id] === undefined) {
+        tailorProcessing[payload.evaluation_id] = false;
+    }
+
+    tailorProcessing[payload.evaluation_id] = false;
+
+    if (payload.status === 'failed') {
+        tailorErrors[payload.evaluation_id] =
+            payload.error_message ?? 'Unable to create tailored resume.';
+
+        return;
+    }
+
+    tailorErrors[payload.evaluation_id] = null;
+    const data = payload.tailored_resume;
+
+    if (!data) {
+        return;
+    }
+
+    const normalized: TailoredResume = {
+        id: data.id,
+        title: data.title ?? null,
+        model: data.model ?? null,
+        content_markdown: data.content_markdown,
+        created_at: data.created_at ?? null,
+        evaluation_id: data.evaluation_id ?? payload.evaluation_id,
+        job_description: data.job_description
+            ? { ...data.job_description }
+            : null,
+    };
+
+    const existingIndex = tailoredResumes.value.findIndex(
+        (item) => item.id === normalized.id,
+    );
+
+    if (existingIndex >= 0) {
+        tailoredResumes.value.splice(existingIndex, 1, normalized);
+    } else {
+        tailoredResumes.value = [normalized, ...tailoredResumes.value];
+    }
+
+    expandedTailored[normalized.id] ??= false;
+    tailorTitles[payload.evaluation_id] = '';
+};
+
+const realtimeChannel = ref<ReturnType<typeof userChannel> | null>(null);
+
+const registerRealtimeHandlers = () => {
+    const userId = page.props.auth?.user?.id;
+
+    if (!userId) {
+        return;
+    }
+
+    const channel = userChannel(userId);
+
+    if (!channel) {
+        return;
+    }
+
+    channel.stopListening('.ResumeEvaluationUpdated');
+    channel.stopListening('.TailoredResumeUpdated');
+
+    channel.listen('.ResumeEvaluationUpdated', handleResumeEvaluationUpdated);
+    channel.listen('.TailoredResumeUpdated', handleTailoredResumeUpdated);
+
+    realtimeChannel.value = channel;
+};
+
+onMounted(() => {
+    registerRealtimeHandlers();
+});
+
+onBeforeUnmount(() => {
+    if (realtimeChannel.value) {
+        realtimeChannel.value.stopListening('.ResumeEvaluationUpdated');
+        realtimeChannel.value.stopListening('.TailoredResumeUpdated');
+    }
+});
 
 const globalErrors = computed(() => page.props.errors ?? {});
 </script>
@@ -318,14 +538,14 @@ const globalErrors = computed(() => page.props.errors ?? {});
                     </span>
                     <span>•</span>
                     <span>
-                        {{ props.evaluations.length }} evaluation{{
-                            props.evaluations.length === 1 ? '' : 's'
+                        {{ evaluations.length }} evaluation{{
+                            evaluations.length === 1 ? '' : 's'
                         }}
                     </span>
                     <span>•</span>
                     <span>
-                        {{ props.tailored_resumes.length }} tailored version{{
-                            props.tailored_resumes.length === 1 ? '' : 's'
+                        {{ tailoredResumes.length }} tailored version{{
+                            tailoredResumes.length === 1 ? '' : 's'
                         }}
                     </span>
                 </div>
@@ -548,14 +768,14 @@ const globalErrors = computed(() => page.props.errors ?? {});
                             <Badge
                                 class="border-border/60 bg-muted/40 text-muted-foreground"
                             >
-                                {{ props.evaluations.length }} total
+                                {{ evaluations.length }} total
                             </Badge>
                         </header>
 
                         <div class="mt-4 space-y-3">
                             <template v-if="hasEvaluations">
                                 <button
-                                    v-for="evaluation in props.evaluations"
+                                    v-for="evaluation in evaluations"
                                     :key="evaluation.id"
                                     type="button"
                                     :class="[
@@ -596,6 +816,10 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                                 )
                                             "
                                         >
+                                            <Loader2
+                                                v-if="evaluation.status === 'pending'"
+                                                class="mr-1 size-3 animate-spin"
+                                            />
                                             {{
                                                 evaluationStatusLabel(
                                                     evaluation.status,
@@ -649,17 +873,12 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                     resume across your evaluations.
                                 </p>
                             </div>
-                            <Badge
-                                class="border-border/60 bg-muted/40 text-muted-foreground"
-                            >
-                                {{ props.tailored_resumes.length }} total
-                            </Badge>
                         </header>
 
                         <div class="mt-4 space-y-4">
                             <template v-if="hasTailoredResumes">
                                 <article
-                                    v-for="tailored in props.tailored_resumes"
+                                    v-for="tailored in tailoredResumes"
                                     :key="tailored.id"
                                     class="rounded-xl border border-border/60 bg-background/70 p-4"
                                 >
@@ -771,6 +990,10 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                     evaluationStatusClass(activeEvaluation.status)
                                 "
                             >
+                                <Loader2
+                                    v-if="activeEvaluation.status === 'pending'"
+                                    class="mr-1 size-3 animate-spin"
+                                />
                                 {{
                                     evaluationStatusLabel(
                                         activeEvaluation.status,
@@ -780,6 +1003,21 @@ const globalErrors = computed(() => page.props.errors ?? {});
                         </header>
 
                         <div v-if="activeEvaluation" class="mt-4 space-y-6">
+                            <div
+                                v-if="activeEvaluation.status === 'failed' && activeEvaluation.error_message"
+                                class="rounded-xl border border-error/30 bg-error/10 p-4 text-sm text-error"
+                            >
+                                {{ activeEvaluation.error_message }}
+                            </div>
+                            <div
+                                v-else-if="activeEvaluation.status === 'pending'"
+                                class="flex items-center gap-2 rounded-xl border border-warning/30 bg-warning/10 p-4 text-sm text-warning"
+                            >
+                                <Loader2 class="size-4 animate-spin" />
+                                <span>
+                                    Evaluation is running. This page will update automatically once it completes.
+                                </span>
+                            </div>
                             <div
                                 class="rounded-xl border border-border/60 bg-background/80 p-4"
                             >
@@ -927,18 +1165,42 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                         "
                                         @click="generateTailored(activeEvaluation)"
                                     >
-                                        <Sparkles class="mr-2 size-4" />
-                                        {{
-                                            activeEvaluation.status === 'completed'
-                                                ? 'Generate tailored version'
-                                                : 'Available after completion'
-                                        }}
+                                        <Loader2
+                                            v-if="tailorProcessing[activeEvaluation.id]"
+                                            class="mr-2 size-4 animate-spin"
+                                        />
+                                        <Sparkles
+                                            v-else
+                                            class="mr-2 size-4"
+                                        />
+                                        <span v-if="tailorProcessing[activeEvaluation.id]">
+                                            Generating…
+                                        </span>
+                                        <span
+                                            v-else-if="
+                                                activeEvaluation.status !== 'completed'
+                                            "
+                                        >
+                                            Available after completion
+                                        </span>
+                                        <span v-else>
+                                            Generate tailored version
+                                        </span>
                                     </Button>
                                     <span
-                                        v-if="activeEvaluation.status !== 'completed'"
+                                        v-if="
+                                            activeEvaluation.status !== 'completed' &&
+                                            !tailorProcessing[activeEvaluation.id]
+                                        "
                                         class="text-xs text-muted-foreground"
                                     >
                                         Wait for completion before tailoring.
+                                    </span>
+                                    <span
+                                        v-if="tailorErrors[activeEvaluation.id]"
+                                        class="text-xs text-error"
+                                    >
+                                        {{ tailorErrors[activeEvaluation.id] }}
                                     </span>
                                 </div>
                             </div>

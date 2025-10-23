@@ -134,6 +134,7 @@ class JobController extends Controller
                     ],
                     'notes' => $evaluation->notes,
                     'feedback_markdown' => $evaluation->feedback_markdown,
+                    'error_message' => $evaluation->error_message,
                     'completed_at' => $evaluation->completed_at?->toIso8601String(),
                     'created_at' => $evaluation->created_at?->toIso8601String(),
                 ])

@@ -6,17 +6,19 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/AppLayout.vue';
+import { userChannel } from '@/lib/realtime';
 import evaluationRoutes from '@/routes/evaluations';
 import jobsRoutes from '@/routes/jobs';
 import resumeRoutes from '@/routes/resumes';
 import type { BreadcrumbItem } from '@/types';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
-import { computed, reactive, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import {
     CalendarClock,
     ChevronDown,
     CircleCheck,
     FileText,
+    Loader2,
     Sparkles,
 } from 'lucide-vue-next';
 
@@ -51,6 +53,7 @@ interface Evaluation {
     model?: string | null;
     notes?: string | null;
     feedback_markdown?: string | null;
+    error_message?: string | null;
     resume: {
         id?: number | null;
         title?: string | null;
@@ -74,6 +77,61 @@ interface TailoredResume {
     } | null;
 }
 
+interface ResumeEvaluationUpdatedPayload {
+    evaluation: {
+        id: number;
+        status: string;
+        headline?: string | null;
+        model?: string | null;
+        notes?: string | null;
+        feedback_markdown?: string | null;
+        error_message?: string | null;
+        completed_at?: string | null;
+        created_at?: string | null;
+        tailored_count?: number;
+        resume?: {
+            id?: number | null;
+            title?: string | null;
+            slug?: string | null;
+        } | null;
+    };
+}
+
+interface TailoredResumeUpdatedPayload {
+    status: 'completed' | 'failed';
+    evaluation_id: number;
+    error_message?: string | null;
+    tailored_resume?: {
+        id: number;
+        title?: string | null;
+        model?: string | null;
+        content_markdown: string;
+        created_at?: string | null;
+        evaluation_id?: number | null;
+        job_description?: {
+            id: number;
+        } | null;
+        resume?: {
+            id?: number | null;
+            title?: string | null;
+            slug?: string | null;
+        } | null;
+    } | null;
+}
+
+interface CompanyResearchUpdatedPayload {
+    status: 'completed' | 'failed';
+    job_id: number;
+    company?: string | null;
+    company_research?: {
+        summary?: string | null;
+        last_ran_at?: string | null;
+        model?: string | null;
+        focus?: string | null;
+    } | null;
+    error_message?: string | null;
+}
+
 const props = defineProps<{
     job: JobDetail;
     evaluations: Evaluation[];
@@ -81,16 +139,85 @@ const props = defineProps<{
     resumes: ResumeOption[];
 }>();
 
+const page = usePage<{
+    errors: Record<string, string>;
+    auth?: { user?: { id: number } | null } | null;
+}>();
+
+const defaultCompanyResearch = (
+    value: JobDetail['company_research'] | null | undefined,
+) => ({
+    summary: value?.summary ?? null,
+    last_ran_at: value?.last_ran_at ?? null,
+    model: value?.model ?? 'gpt-5-mini',
+    focus: value?.focus ?? '',
+});
+
+const cloneJob = (job: JobDetail): JobDetail => ({
+    ...job,
+    title: job.title ?? null,
+    company: job.company ?? null,
+    source_url: job.source_url ?? null,
+    description_markdown: job.description_markdown ?? null,
+    company_research: defaultCompanyResearch(job.company_research),
+});
+
+const jobState = ref<JobDetail>(cloneJob(props.job));
+const job = jobState;
+
 const breadcrumbs: BreadcrumbItem[] = [
     {
         title: 'Jobs',
         href: jobsRoutes.index.url(),
     },
     {
-        title: props.job.title ?? 'Job',
-        href: jobsRoutes.show({ job: props.job.id }).url,
+        title: jobState.value.title ?? 'Job',
+        href: jobsRoutes.show({ job: jobState.value.id }).url,
     },
 ];
+
+const cloneEvaluation = (evaluation: Evaluation): Evaluation => ({
+    ...evaluation,
+    resume: {
+        id: evaluation.resume?.id ?? null,
+        title: evaluation.resume?.title ?? null,
+        slug: evaluation.resume?.slug ?? null,
+    },
+});
+
+const cloneTailored = (tailored: TailoredResume): TailoredResume => ({
+    ...tailored,
+    resume: tailored.resume
+        ? {
+              id: tailored.resume.id ?? null,
+              title: tailored.resume.title ?? null,
+              slug: tailored.resume.slug ?? null,
+          }
+        : null,
+});
+
+const evaluations = ref<Evaluation[]>(
+    props.evaluations.map(cloneEvaluation),
+);
+const tailoredResumes = ref<TailoredResume[]>(
+    props.tailored_resumes.map(cloneTailored),
+);
+
+watch(
+    () => props.evaluations,
+    (value) => {
+        evaluations.value = value.map(cloneEvaluation);
+    },
+    { deep: true },
+);
+
+watch(
+    () => props.tailored_resumes,
+    (value) => {
+        tailoredResumes.value = value.map(cloneTailored);
+    },
+    { deep: true },
+);
 
 const initialResumeId =
     props.resumes.length > 0 ? props.resumes[0].id : null;
@@ -103,10 +230,44 @@ const evaluationForm = useForm({
 });
 
 const researchForm = useForm({
-    company: props.job.company ?? '',
-    model: props.job.company_research.model ?? 'gpt-5-mini',
-    focus: props.job.company_research.focus ?? '',
+    company: jobState.value.company ?? '',
+    model: jobState.value.company_research.model ?? 'gpt-5-mini',
+    focus: jobState.value.company_research.focus ?? '',
 });
+
+watch(
+    () => props.job,
+    (value) => {
+        jobState.value = cloneJob(value);
+        companyResearchProcessing.value = false;
+        companyResearchError.value = null;
+    },
+    { deep: true },
+);
+
+watch(
+    () => jobState.value.company,
+    (value) => {
+        researchForm.company = value ?? '';
+    },
+    { immediate: true },
+);
+
+watch(
+    () => jobState.value.company_research.model,
+    (value) => {
+        researchForm.model = value ?? 'gpt-5-mini';
+    },
+    { immediate: true },
+);
+
+watch(
+    () => jobState.value.company_research.focus,
+    (value) => {
+        researchForm.focus = value ?? '';
+    },
+    { immediate: true },
+);
 
 const availableModels = [
     {
@@ -123,46 +284,17 @@ const availableModels = [
 
 const tailorTitles = reactive<Record<number, string>>({});
 const tailorProcessing = reactive<Record<number, boolean>>({});
+const tailorErrors = reactive<Record<number, string | null>>({});
 const expandedTailored = reactive<Record<number, boolean>>({});
 const showCompanyResearch = ref(true);
+const companyResearchProcessing = ref(false);
+const companyResearchError = ref<string | null>(null);
+const isResearchRunning = computed(
+    () => companyResearchProcessing.value || researchForm.processing,
+);
 
 const activeEvaluationId = ref<number | null>(
-    props.evaluations.length > 0 ? props.evaluations[0].id : null,
-);
-
-watch(
-    () => props.evaluations.map((evaluation) => evaluation.id),
-    (evaluationIds) => {
-        evaluationIds.forEach((id) => {
-            if (tailorTitles[id] === undefined) {
-                tailorTitles[id] = '';
-            }
-
-            if (tailorProcessing[id] === undefined) {
-                tailorProcessing[id] = false;
-            }
-        });
-
-        if (
-            activeEvaluationId.value === null ||
-            !evaluationIds.includes(activeEvaluationId.value)
-        ) {
-            activeEvaluationId.value = evaluationIds[0] ?? null;
-        }
-    },
-    { immediate: true },
-);
-
-watch(
-    () => props.tailored_resumes.map((tailored) => tailored.id),
-    (tailoredIds) => {
-        tailoredIds.forEach((id) => {
-            if (expandedTailored[id] === undefined) {
-                expandedTailored[id] = false;
-            }
-        });
-    },
-    { immediate: true },
+    evaluations.value.length > 0 ? evaluations.value[0].id : null,
 );
 
 watch(
@@ -178,16 +310,56 @@ watch(
     { immediate: true },
 );
 
-const hasEvaluations = computed(() => props.evaluations.length > 0);
+watch(
+    () => evaluations.value.map((evaluation) => evaluation.id),
+    (evaluationIds) => {
+        evaluationIds.forEach((id) => {
+            if (tailorTitles[id] === undefined) {
+                tailorTitles[id] = '';
+            }
+
+            if (tailorProcessing[id] === undefined) {
+                tailorProcessing[id] = false;
+            }
+
+            if (tailorErrors[id] === undefined) {
+                tailorErrors[id] = null;
+            }
+        });
+
+        if (
+            activeEvaluationId.value === null ||
+            !evaluationIds.includes(activeEvaluationId.value)
+        ) {
+            activeEvaluationId.value = evaluationIds[0] ?? null;
+        }
+    },
+    { immediate: true },
+);
+
+watch(
+    () => tailoredResumes.value.map((tailored) => tailored.id),
+    (tailoredIds) => {
+        tailoredIds.forEach((id) => {
+            if (expandedTailored[id] === undefined) {
+                expandedTailored[id] = false;
+            }
+        });
+    },
+    { immediate: true },
+);
+
+const hasEvaluations = computed(() => evaluations.value.length > 0);
+
 const activeEvaluation = computed(
     () =>
-        props.evaluations.find(
+        evaluations.value.find(
             (evaluation) => evaluation.id === activeEvaluationId.value,
         ) ?? null,
 );
 
 const activeEvaluationTailored = computed(() =>
-    props.tailored_resumes.filter(
+    tailoredResumes.value.filter(
         (tailored) => tailored.evaluation_id === activeEvaluationId.value,
     ),
 );
@@ -248,7 +420,7 @@ const submitEvaluation = () => {
     }
 
     evaluationForm.post(
-        jobsRoutes.evaluations.store({ job: props.job.id }).url,
+        jobsRoutes.evaluations.store({ job: jobState.value.id }).url,
         {
             preserveScroll: true,
             onSuccess: () => {
@@ -259,10 +431,16 @@ const submitEvaluation = () => {
 };
 
 const submitResearch = () => {
+    companyResearchProcessing.value = true;
+    companyResearchError.value = null;
+
     researchForm.post(
-        jobsRoutes.research.store({ job: props.job.id }).url,
+        jobsRoutes.research.store({ job: jobState.value.id }).url,
         {
             preserveScroll: true,
+            onError: () => {
+                companyResearchProcessing.value = false;
+            },
             onSuccess: () => {
                 researchForm.reset('focus');
             },
@@ -276,6 +454,7 @@ const generateTailored = (evaluation: Evaluation | null) => {
     }
 
     tailorProcessing[evaluation.id] = true;
+    tailorErrors[evaluation.id] = null;
 
     router.post(
         evaluationRoutes.tailor.url({ evaluation: evaluation.id }),
@@ -284,7 +463,7 @@ const generateTailored = (evaluation: Evaluation | null) => {
         },
         {
             preserveScroll: true,
-            onFinish: () => {
+            onError: () => {
                 tailorProcessing[evaluation.id] = false;
             },
             onSuccess: () => {
@@ -298,9 +477,184 @@ const toggleTailoredPreview = (id: number) => {
     expandedTailored[id] = !expandedTailored[id];
 };
 
-const page = usePage<{
-    errors: Record<string, string>;
-}>();
+const handleResumeEvaluationUpdated = (
+    payload: ResumeEvaluationUpdatedPayload,
+) => {
+    const existing = evaluations.value.find(
+        (evaluation) => evaluation.id === payload.evaluation.id,
+    );
+
+    const resumeInfo = existing?.resume ?? payload.evaluation.resume ?? {
+        id: null,
+        title: null,
+        slug: null,
+    };
+
+    const normalized: Evaluation = {
+        id: payload.evaluation.id,
+        status: payload.evaluation.status,
+        headline: payload.evaluation.headline ?? null,
+        model: payload.evaluation.model ?? null,
+        notes: payload.evaluation.notes ?? null,
+        feedback_markdown: payload.evaluation.feedback_markdown ?? null,
+        error_message: payload.evaluation.error_message ?? null,
+        resume: {
+            id: resumeInfo.id ?? null,
+            title: resumeInfo.title ?? null,
+            slug: resumeInfo.slug ?? null,
+        },
+        completed_at: payload.evaluation.completed_at ?? null,
+        created_at: payload.evaluation.created_at ?? null,
+    };
+
+    const existingIndex = evaluations.value.findIndex(
+        (evaluation) => evaluation.id === normalized.id,
+    );
+
+    if (existingIndex >= 0) {
+        evaluations.value.splice(existingIndex, 1, normalized);
+    } else {
+        evaluations.value = [normalized, ...evaluations.value];
+    }
+
+    if (tailorTitles[normalized.id] === undefined) {
+        tailorTitles[normalized.id] = '';
+    }
+
+    if (tailorProcessing[normalized.id] === undefined) {
+        tailorProcessing[normalized.id] = false;
+    }
+
+    if (tailorErrors[normalized.id] === undefined) {
+        tailorErrors[normalized.id] = null;
+    }
+
+    if (
+        activeEvaluationId.value === null ||
+        !evaluations.value.some(
+            (evaluation) => evaluation.id === activeEvaluationId.value,
+        )
+    ) {
+        activeEvaluationId.value = evaluations.value[0]?.id ?? null;
+    }
+};
+
+const handleTailoredResumeUpdated = (
+    payload: TailoredResumeUpdatedPayload,
+) => {
+    if (tailorProcessing[payload.evaluation_id] === undefined) {
+        tailorProcessing[payload.evaluation_id] = false;
+    }
+
+    tailorProcessing[payload.evaluation_id] = false;
+
+    if (payload.status === 'failed') {
+        tailorErrors[payload.evaluation_id] =
+            payload.error_message ?? 'Unable to create tailored resume.';
+
+        return;
+    }
+
+    tailorErrors[payload.evaluation_id] = null;
+
+    const data = payload.tailored_resume;
+
+    if (!data) {
+        return;
+    }
+
+    const normalized: TailoredResume = {
+        id: data.id,
+        title: data.title ?? null,
+        model: data.model ?? null,
+        content_markdown: data.content_markdown,
+        created_at: data.created_at ?? null,
+        evaluation_id: data.evaluation_id ?? payload.evaluation_id,
+        resume: data.resume
+            ? {
+                  id: data.resume.id ?? null,
+                  title: data.resume.title ?? null,
+                  slug: data.resume.slug ?? null,
+              }
+            : null,
+    };
+
+    const existingIndex = tailoredResumes.value.findIndex(
+        (item) => item.id === normalized.id,
+    );
+
+    if (existingIndex >= 0) {
+        tailoredResumes.value.splice(existingIndex, 1, normalized);
+    } else {
+        tailoredResumes.value = [normalized, ...tailoredResumes.value];
+    }
+
+    expandedTailored[normalized.id] ??= false;
+    tailorTitles[payload.evaluation_id] = '';
+};
+
+const handleCompanyResearchUpdated = (
+    payload: CompanyResearchUpdatedPayload,
+) => {
+    if (payload.job_id !== jobState.value.id) {
+        return;
+    }
+
+    companyResearchProcessing.value = false;
+
+    if (payload.status === 'failed') {
+        companyResearchError.value =
+            payload.error_message ?? 'Company research failed to complete.';
+
+        return;
+    }
+
+    companyResearchError.value = null;
+
+    jobState.value = {
+        ...jobState.value,
+        company: payload.company ?? jobState.value.company ?? null,
+        company_research: defaultCompanyResearch(payload.company_research),
+    };
+};
+
+const realtimeChannel = ref<ReturnType<typeof userChannel> | null>(null);
+
+const registerRealtimeHandlers = () => {
+    const userId = page.props.auth?.user?.id;
+
+    if (!userId) {
+        return;
+    }
+
+    const channel = userChannel(userId);
+
+    if (!channel) {
+        return;
+    }
+
+    channel.stopListening('.ResumeEvaluationUpdated');
+    channel.stopListening('.TailoredResumeUpdated');
+    channel.stopListening('.CompanyResearchUpdated');
+
+    channel.listen('.ResumeEvaluationUpdated', handleResumeEvaluationUpdated);
+    channel.listen('.TailoredResumeUpdated', handleTailoredResumeUpdated);
+    channel.listen('.CompanyResearchUpdated', handleCompanyResearchUpdated);
+
+    realtimeChannel.value = channel;
+};
+
+onMounted(() => {
+    registerRealtimeHandlers();
+});
+
+onBeforeUnmount(() => {
+    if (realtimeChannel.value) {
+        realtimeChannel.value.stopListening('.ResumeEvaluationUpdated');
+        realtimeChannel.value.stopListening('.TailoredResumeUpdated');
+        realtimeChannel.value.stopListening('.CompanyResearchUpdated');
+    }
+});
 
 const globalErrors = computed(() => page.props.errors ?? {});
 </script>
@@ -532,6 +886,10 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                     evaluationStatusClass(activeEvaluation.status)
                                 "
                             >
+                                <Loader2
+                                    v-if="activeEvaluation.status === 'pending'"
+                                    class="mr-1 size-3 animate-spin"
+                                />
                                 {{
                                     evaluationStatusLabel(activeEvaluation.status)
                                 }}
@@ -539,6 +897,21 @@ const globalErrors = computed(() => page.props.errors ?? {});
                         </header>
 
                         <div v-if="activeEvaluation" class="mt-4 space-y-6">
+                            <div
+                                v-if="activeEvaluation.status === 'failed' && activeEvaluation.error_message"
+                                class="rounded-xl border border-error/30 bg-error/10 p-4 text-sm text-error"
+                            >
+                                {{ activeEvaluation.error_message }}
+                            </div>
+                            <div
+                                v-else-if="activeEvaluation.status === 'pending'"
+                                class="flex items-center gap-2 rounded-xl border border-warning/30 bg-warning/10 p-4 text-sm text-warning"
+                            >
+                                <Loader2 class="size-4 animate-spin" />
+                                <span>
+                                    Evaluation is running. This section will update automatically once it completes.
+                                </span>
+                            </div>
                             <div
                                 class="rounded-xl border border-border/60 bg-background/80 p-4"
                             >
@@ -906,12 +1279,36 @@ const globalErrors = computed(() => page.props.errors ?? {});
 
                                 <Button
                                     type="submit"
-                                    :disabled="researchForm.processing"
+                                    :disabled="isResearchRunning"
                                     class="justify-center"
                                 >
-                                    <Sparkles class="mr-2 size-4" />
-                                    Run company research
+                                    <Loader2
+                                        v-if="isResearchRunning"
+                                        class="mr-2 size-4 animate-spin"
+                                    />
+                                    <Sparkles
+                                        v-else
+                                        class="mr-2 size-4"
+                                    />
+                                    <span v-if="isResearchRunning">
+                                        Running company research…
+                                    </span>
+                                    <span v-else>
+                                        Run company research
+                                    </span>
                                 </Button>
+                                <p
+                                    v-if="companyResearchError"
+                                    class="text-xs text-error"
+                                >
+                                    {{ companyResearchError }}
+                                </p>
+                                <p
+                                    v-else-if="isResearchRunning"
+                                    class="text-xs text-muted-foreground"
+                                >
+                                    Sit tight—we'll update the briefing as soon as it finishes.
+                                </p>
                             </form>
                         </div>
                     </div>
@@ -974,6 +1371,10 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                                 )
                                             "
                                         >
+                                            <Loader2
+                                                v-if="evaluation.status === 'pending'"
+                                                class="mr-1 size-3 animate-spin"
+                                            />
                                             {{
                                                 evaluationStatusLabel(
                                                     evaluation.status,

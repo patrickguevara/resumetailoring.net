@@ -22,6 +22,10 @@ class JobDescriptionFetcher
      */
     public function fetch(string $url): string
     {
+        if (! Str::startsWith(strtolower($url), ['http://', 'https://'])) {
+            throw new RuntimeException('Job description must be provided manually for this job.');
+        }
+
         try {
             $response = Http::withHeaders($this->requestHeaders())
                 ->timeout(30)
@@ -55,8 +59,22 @@ class JobDescriptionFetcher
 
         if (Str::contains($contentType, 'text/html')) {
             $text = $this->cleanHtml($body);
+
+            if ($text === '' || mb_strlen($text) < 200) {
+                // Some sites render minimal semantic markup or rely on client-side rendering
+                // that the DOM parser cannot infer. Fall back to a plainer extraction.
+                $fallback = $this->sanitizeExtractedText(
+                    $this->collapseWhitespace(strip_tags($body))
+                );
+
+                if ($fallback !== '') {
+                    $text = $fallback;
+                }
+            }
         } else {
-            $text = trim($body);
+            $text = $this->sanitizeExtractedText(
+                $this->collapseWhitespace($body)
+            );
         }
 
         if ($text === '') {
@@ -204,9 +222,30 @@ class JobDescriptionFetcher
         foreach ($candidates as $expression) {
             $node = $xpath->query($expression)->item(0);
 
-            if ($node instanceof DOMNode) {
+            if ($node instanceof DOMElement && ! $this->isNoiseContainer($node)) {
                 return $node;
             }
+        }
+
+        $bestNode = null;
+        $bestScore = 0;
+
+        foreach ($xpath->query('//article|//section|//div') as $candidate) {
+            if (! $candidate instanceof DOMElement || $this->isNoiseContainer($candidate)) {
+                continue;
+            }
+
+            $text = trim($candidate->textContent ?? '');
+            $score = mb_strlen($text);
+
+            if ($score > $bestScore) {
+                $bestScore = $score;
+                $bestNode = $candidate;
+            }
+        }
+
+        if ($bestNode instanceof DOMNode && $bestScore >= 200) {
+            return $bestNode;
         }
 
         return $document->getElementsByTagName('body')->item(0);
@@ -486,7 +525,168 @@ class JobDescriptionFetcher
             return '';
         }
 
-        $normalized = preg_replace('/\s+/u', ' ', $text) ?? '';
+        return $this->collapseWhitespace($text);
+    }
+
+    private function isNoiseContainer(DOMElement $element): bool
+    {
+        $tag = strtolower($element->tagName);
+
+        if (in_array($tag, ['nav', 'footer', 'header', 'form'], true)) {
+            return true;
+        }
+
+        $class = strtolower($element->getAttribute('class'));
+
+        if ($class !== '') {
+            $noiseClasses = [
+                'footer',
+                'header',
+                'nav',
+                'breadcrumb',
+                'breadcrumbs',
+                'menu',
+                'sidebar',
+                'subscribe',
+                'newsletter',
+                'cookie',
+                'consent',
+                'modal',
+            ];
+
+            foreach ($noiseClasses as $needle) {
+                if (str_contains($class, $needle)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private function sanitizeExtractedText(string $text): string
+    {
+        $lines = preg_split("/\r\n|\r|\n/", $text) ?: [];
+        $filtered = [];
+        $cssDepth = 0;
+        $jsonDepth = 0;
+
+        foreach ($lines as $line) {
+            $trim = trim($line);
+
+            if ($trim === '') {
+                if (end($filtered) !== '') {
+                    $filtered[] = '';
+                }
+
+                continue;
+            }
+
+            if ($cssDepth > 0) {
+                $cssDepth += substr_count($trim, '{');
+                $cssDepth -= substr_count($trim, '}');
+
+                if ($cssDepth <= 0) {
+                    $cssDepth = 0;
+                }
+
+                continue;
+            }
+
+            if ($jsonDepth > 0) {
+                $jsonDepth += substr_count($trim, '{');
+                $jsonDepth -= substr_count($trim, '}');
+
+                if ($jsonDepth <= 0) {
+                    $jsonDepth = 0;
+                }
+
+                continue;
+            }
+
+            if ($this->startsCssBlock($trim)) {
+                $cssDepth = 1;
+                $cssDepth += substr_count($trim, '{') - substr_count($trim, '}');
+
+                if ($cssDepth < 0) {
+                    $cssDepth = 0;
+                }
+
+                continue;
+            }
+
+            if ($this->startsJsonBlock($trim)) {
+                $jsonDepth = 1;
+                $jsonDepth += substr_count($trim, '{') - substr_count($trim, '}');
+
+                if ($jsonDepth <= 0) {
+                    $jsonDepth = 0;
+                }
+
+                continue;
+            }
+
+            if ($this->looksLikeJsonLine($trim) || $this->looksLikeCssLine($trim)) {
+                continue;
+            }
+
+            $filtered[] = $line;
+        }
+
+        $output = implode("\n", $filtered);
+        $output = preg_replace("/\n{3,}/u", "\n\n", $output ?? '') ?? '';
+
+        return trim($output);
+    }
+
+    private function startsCssBlock(string $line): bool
+    {
+        if (! str_contains($line, '{')) {
+            return false;
+        }
+
+        return (bool) preg_match('/^[\w\.\#][^{]{0,200}\{\s*$/u', $line);
+    }
+
+    private function startsJsonBlock(string $line): bool
+    {
+        if ($line === '{' || $line === '[') {
+            return true;
+        }
+
+        return str_starts_with($line, '{') && ! str_contains($line, '}');
+    }
+
+    private function looksLikeJsonLine(string $line): bool
+    {
+        if (str_starts_with($line, '"@context"')) {
+            return true;
+        }
+
+        if (str_starts_with($line, '"@type"')) {
+            return true;
+        }
+
+        return (bool) preg_match('/^"\w[^"]*":/u', $line);
+    }
+
+    private function looksLikeCssLine(string $line): bool
+    {
+        if (str_contains($line, '{') || str_contains($line, '}')) {
+            return true;
+        }
+
+        if (! str_contains($line, ':') || ! str_contains($line, ';')) {
+            return false;
+        }
+
+        return (bool) preg_match('/^[\w\-]+\s*:\s*[^;]+;$/u', $line);
+    }
+
+    private function collapseWhitespace(string $value): string
+    {
+        $normalized = preg_replace("/\r\n|\r/", "\n", $value) ?? $value;
+        $normalized = preg_replace('/[ \t]+/u', ' ', $normalized) ?? $normalized;
 
         return $normalized;
     }

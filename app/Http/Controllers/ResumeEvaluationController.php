@@ -3,28 +3,25 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreResumeEvaluationRequest;
+use App\Jobs\ProcessResumeEvaluation;
 use App\Models\JobDescription;
 use App\Models\Resume;
 use App\Models\ResumeEvaluation;
-use App\Services\ResumeIntelligenceService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use RuntimeException;
 
 class ResumeEvaluationController extends Controller
 {
     public function store(
         StoreResumeEvaluationRequest $request,
-        Resume $resume,
-        ResumeIntelligenceService $intelligenceService
+        Resume $resume
     ): RedirectResponse {
         $user = $request->user();
         abort_unless($resume->user_id === $user->id, 404);
 
         $jobInputType = $request->string('job_input_type')->trim()->lower()->value();
         $model = $request->string('model')->trim()->lower()->value();
-        $errorField = $jobInputType === 'text' ? 'job_text' : 'job_url';
 
         $jobCompany = (string) $request->string('job_company')->trim();
 
@@ -74,37 +71,15 @@ class ResumeEvaluationController extends Controller
             'notes' => $request->string('notes')->trim() ?: null,
         ]);
 
-        try {
-            $result = $intelligenceService->evaluate($resume, $job, $evaluation, $jobUrl, $model);
-
-            $headline = Str::of($result['content'])
-                ->before("\n")
-                ->stripTags()
-                ->trim()
-                ->limit(160);
-
-            $evaluation->forceFill([
-                'status' => ResumeEvaluation::STATUS_COMPLETED,
-                'model' => $result['model'],
-                'feedback_markdown' => $result['content'],
-                'headline' => (string) $headline ?: null,
-                'completed_at' => now(),
-                'error_message' => null,
-            ])->save();
-        } catch (RuntimeException $exception) {
-            $evaluation->forceFill([
-                'status' => ResumeEvaluation::STATUS_FAILED,
-                'error_message' => $exception->getMessage(),
-            ])->save();
-
-            return back()->withErrors([
-                $errorField => $exception->getMessage(),
-            ]);
-        }
+        ProcessResumeEvaluation::dispatch(
+            evaluationId: $evaluation->id,
+            jobUrlOverride: $jobUrl,
+            modelOverride: $model,
+        );
 
         return to_route('resumes.show', $resume)->with('flash', [
-            'type' => 'success',
-            'message' => 'Job description evaluated successfully.',
+            'type' => 'info',
+            'message' => 'Evaluation queued. We will notify you when it finishes.',
         ]);
     }
 }

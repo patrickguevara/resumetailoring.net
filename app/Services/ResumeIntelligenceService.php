@@ -173,11 +173,36 @@ PROMPT;
 
     private function resolveJobDescriptionText(JobDescription $job, ?string $jobUrlOverride = null): string
     {
-        if ($job->content_markdown) {
-            return $job->content_markdown;
+        $stored = trim((string) $job->content_markdown);
+
+        if ($stored !== '') {
+            return $stored;
+        }
+
+        $metadata = $job->metadata ?? [];
+        $metadataKeys = [
+            'content_markdown',
+            'description_markdown',
+            'description',
+            'job_text',
+        ];
+
+        foreach ($metadataKeys as $key) {
+            $value = trim((string) data_get($metadata, $key, ''));
+
+            if ($value !== '') {
+                return $value;
+            }
         }
 
         $url = $jobUrlOverride ?? $job->source_url;
+
+        if ($url === null || $url === '') {
+            throw new RuntimeException(
+                'Job description is missing. Provide a job URL or paste the description text.'
+            );
+        }
+
         $content = $this->jobFetcher->fetch($url);
 
         $job->update(['content_markdown' => $content]);

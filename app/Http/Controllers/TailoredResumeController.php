@@ -3,18 +3,15 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreTailoredResumeRequest;
+use App\Jobs\GenerateTailoredResume;
 use App\Models\ResumeEvaluation;
-use App\Services\ResumeIntelligenceService;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Support\Str;
-use RuntimeException;
 
 class TailoredResumeController extends Controller
 {
     public function store(
         StoreTailoredResumeRequest $request,
-        ResumeEvaluation $evaluation,
-        ResumeIntelligenceService $intelligenceService
+        ResumeEvaluation $evaluation
     ): RedirectResponse {
         $user = $request->user();
 
@@ -26,49 +23,16 @@ class TailoredResumeController extends Controller
             ]);
         }
 
-        $resume = $evaluation->resume;
-        $job = $evaluation->jobDescription;
+        $title = (string) $request->string('title')->trim();
 
-        try {
-            $result = $intelligenceService->tailor($resume, $job, $evaluation, $evaluation->feedback_markdown);
-        } catch (RuntimeException $exception) {
-            return back()->withErrors([
-                'tailor' => $exception->getMessage(),
-            ]);
-        }
+        GenerateTailoredResume::dispatch(
+            evaluationId: $evaluation->id,
+            customTitle: $title !== '' ? $title : null,
+        );
 
-        $title = $request->string('title')->trim();
-
-        if ($title === '') {
-            $jobTitle = $job->title;
-
-            if ($jobTitle === null || $jobTitle === '') {
-                if ($job->isManual()) {
-                    $jobTitle = 'manual job description';
-                } else {
-                    $jobTitle = Str::of((string) $job->source_url)
-                        ->afterLast('/')
-                        ->before('?')
-                        ->replace('-', ' ')
-                        ->title();
-                }
-            }
-
-            $title = sprintf('Tailored for %s', $jobTitle ?: 'target role');
-        }
-
-        $tailored = $resume->tailoredResumes()->create([
-            'user_id' => $user->id,
-            'job_description_id' => $job->id,
-            'resume_evaluation_id' => $evaluation->id,
-            'model' => $result['model'],
-            'title' => $title,
-            'content_markdown' => $result['content'],
-        ]);
-
-        return to_route('resumes.show', $resume)->with('flash', [
-            'type' => 'success',
-            'message' => sprintf('Tailored resume "%s" created.', $tailored->title),
+        return to_route('resumes.show', $evaluation->resume)->with('flash', [
+            'type' => 'info',
+            'message' => 'Tailored resume request queued. We will notify you when it is ready.',
         ]);
     }
 }
