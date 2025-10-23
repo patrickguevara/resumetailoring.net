@@ -145,6 +145,7 @@ class JobController extends Controller
                     'id' => $tailored->id,
                     'title' => $tailored->title,
                     'model' => $tailored->model,
+                    'evaluation_id' => $tailored->resume_evaluation_id,
                     'resume' => [
                         'id' => $tailored->resume?->id,
                         'title' => $tailored->resume?->title,

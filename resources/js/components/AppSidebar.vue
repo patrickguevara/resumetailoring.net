@@ -60,7 +60,7 @@ const footerNavItems: NavItem[] = [
             </SidebarMenuItem>
         </SidebarMenu>
         <div
-            class="rounded-lg border border-sidebar-border/70 bg-sidebar/80 px-4 py-3 text-xs text-sidebar-foreground shadow-sm"
+            class="rounded-lg border border-sidebar-border/70 bg-sidebar/80 px-4 py-3 text-xs text-sidebar-foreground shadow-sm group-data-[state=collapsed]:hidden"
         >
             <p class="text-sm font-semibold text-sidebar-foreground">
                 Tailor smarter
