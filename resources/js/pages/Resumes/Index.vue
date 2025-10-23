@@ -8,15 +8,25 @@ import resumeRoutes from '@/routes/resumes';
 import type { BreadcrumbItem } from '@/types';
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import { computed } from 'vue';
+import { Sparkles } from 'lucide-vue-next';
+
+interface TailoredTarget {
+    job_id: number;
+    job_title?: string | null;
+    company?: string | null;
+}
 
 interface ResumeSummary {
     id: number;
     slug: string;
     title: string;
     description?: string | null;
+    uploaded_at?: string | null;
+    updated_at?: string | null;
+    last_evaluated_at?: string | null;
     evaluations_count: number;
     tailored_count: number;
-    updated_at?: string | null;
+    tailored_for: TailoredTarget[];
 }
 
 interface RecentEvaluation {
@@ -59,6 +69,56 @@ const hasRecentEvaluations = computed(
     () => props.recent_evaluations.length > 0,
 );
 
+const dateFormatter = new Intl.DateTimeFormat(undefined, {
+    dateStyle: 'medium',
+});
+
+const dateTimeFormatter = new Intl.DateTimeFormat(undefined, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+});
+
+const formatDate = (value?: string | null) => {
+    if (!value) {
+        return null;
+    }
+
+    return dateFormatter.format(new Date(value));
+};
+
+const formatDateTime = (value?: string | null) => {
+    if (!value) {
+        return null;
+    }
+
+    return dateTimeFormatter.format(new Date(value));
+};
+
+const evaluationStatusConfig: Record<
+    string,
+    { label: string; className: string }
+> = {
+    completed: {
+        label: 'Completed',
+        className: 'border-success/30 bg-success/10 text-success',
+    },
+    failed: {
+        label: 'Failed',
+        className: 'border-error/30 bg-error/10 text-error',
+    },
+    pending: {
+        label: 'Pending',
+        className: 'border-warning/30 bg-warning/10 text-warning',
+    },
+};
+
+const evaluationStatusLabel = (status: string) =>
+    evaluationStatusConfig[status]?.label ?? 'Queued';
+
+const evaluationStatusClass = (status: string) =>
+    evaluationStatusConfig[status]?.className ??
+    'border-muted/60 bg-muted/40 text-muted-foreground';
+
 const submit = () => {
     form.post(resumeRoutes.store.url(), {
         preserveScroll: true,
@@ -73,91 +133,226 @@ const submit = () => {
     <Head title="Resumes" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="flex flex-col gap-6 px-4 py-6">
-            <div class="grid gap-6 md:grid-cols-[2fr,1fr]">
-                <section class="flex flex-col gap-4">
-                    <header class="flex flex-col gap-1">
-                        <h1 class="text-2xl font-semibold text-foreground">
-                            Your resumes
-                        </h1>
-                        <p class="text-sm text-muted-foreground">
-                            Manage the base resumes you want to evaluate
-                            against job descriptions.
-                        </p>
+        <div class="space-y-10 px-6 py-8">
+            <section class="max-w-3xl space-y-3">
+                <p
+                    class="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-primary"
+                >
+                    <span
+                        class="inline-flex size-6 items-center justify-center rounded-full bg-primary/10 text-primary"
+                    >
+                        <Sparkles class="size-3.5" />
+                    </span>
+                    Control center
+                </p>
+                <h1 class="text-3xl font-semibold text-foreground">
+                    Your resume library
+                </h1>
+                <p class="text-sm text-muted-foreground">
+                    Keep master resumes polished, track tailoring targets, and
+                    kick off evaluations whenever new roles arrive.
+                </p>
+            </section>
+
+            <div class="grid gap-8 xl:grid-cols-[minmax(0,1fr),360px]">
+                <section
+                    class="flex flex-col gap-5 rounded-2xl border border-border/60 bg-card/80 p-6 shadow-sm"
+                >
+                    <header class="flex flex-wrap items-center justify-between gap-4">
+                        <div>
+                            <h2 class="text-lg font-semibold text-foreground">
+                                Resume catalog
+                            </h2>
+                            <p class="text-sm text-muted-foreground">
+                                Track upload dates, tailored versions, and quick
+                                actions.
+                            </p>
+                        </div>
                     </header>
 
                     <div
                         v-if="hasResumes"
-                        class="grid gap-4 md:grid-cols-2 xl:grid-cols-3"
+                        class="-mx-4 overflow-hidden rounded-xl border border-border/60 md:mx-0"
                     >
-                        <article
-                            v-for="resume in resumes"
-                            :key="resume.id"
-                            class="flex h-full flex-col justify-between rounded-lg border border-border/60 bg-background/60 p-4 shadow-sm transition hover:border-primary/70 hover:shadow-md dark:border-border/40"
+                        <table
+                            class="min-w-full divide-y divide-border/60 text-sm"
                         >
-                            <div class="flex flex-col gap-2">
-                                <h2 class="text-lg font-medium text-foreground">
-                                    {{ resume.title }}
-                                </h2>
-                                <p
-                                    v-if="resume.description"
-                                    class="text-sm text-muted-foreground"
+                            <thead
+                                class="bg-muted/40 text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                            >
+                                <tr>
+                                    <th scope="col" class="px-4 py-3 text-left">
+                                        Resume Name
+                                    </th>
+                                    <th scope="col" class="px-4 py-3 text-left">
+                                        Upload Date
+                                    </th>
+                                    <th scope="col" class="px-4 py-3 text-left">
+                                        Tailored For
+                                    </th>
+                                    <th scope="col" class="px-4 py-3 text-left">
+                                        Actions
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-border/60 bg-card/60">
+                                <tr
+                                    v-for="resume in props.resumes"
+                                    :key="resume.id"
+                                    class="transition hover:bg-accent/10"
                                 >
-                                    {{ resume.description }}
-                                </p>
-                            </div>
-                            <dl
-                                class="mt-4 grid grid-cols-2 gap-3 text-sm text-muted-foreground"
-                            >
-                                <div>
-                                    <dt class="font-medium text-foreground">
-                                        Evaluations
-                                    </dt>
-                                    <dd>{{ resume.evaluations_count }}</dd>
-                                </div>
-                                <div>
-                                    <dt class="font-medium text-foreground">
-                                        Tailored
-                                    </dt>
-                                    <dd>{{ resume.tailored_count }}</dd>
-                                </div>
-                            </dl>
-                            <Link
-                                :href="resumeRoutes.show({ slug: resume.slug }).url"
-                                class="mt-6 inline-flex items-center justify-center rounded-md border border-border/80 px-4 py-2 text-sm font-medium text-primary hover:border-primary"
-                            >
-                                View timeline
-                            </Link>
-                        </article>
+                                    <td class="px-4 py-4 align-top">
+                                        <div class="flex flex-col gap-1">
+                                            <div class="flex items-center gap-2">
+                                                <span
+                                                    class="text-sm font-semibold text-foreground"
+                                                >
+                                                    {{ resume.title }}
+                                                </span>
+                                                <span
+                                                    class="inline-flex items-center gap-1 rounded-full border border-muted/60 bg-muted/30 px-2 py-0.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
+                                                >
+                                                    {{ resume.evaluations_count }}
+                                                    eval{{ resume.evaluations_count === 1 ? '' : 's' }}
+                                                </span>
+                                            </div>
+                                            <p
+                                                v-if="resume.description"
+                                                class="text-xs text-muted-foreground"
+                                            >
+                                                {{ resume.description }}
+                                            </p>
+                                            <p class="text-xs text-muted-foreground">
+                                                {{ resume.tailored_count }} tailored
+                                                version{{ resume.tailored_count === 1 ? '' : 's' }}
+                                            </p>
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-4 align-top text-sm text-muted-foreground">
+                                        <div class="flex flex-col gap-1">
+                                            <span>
+                                                {{ formatDate(resume.uploaded_at) || '—' }}
+                                            </span>
+                                            <span
+                                                v-if="formatDateTime(resume.last_evaluated_at)"
+                                                class="text-xs text-muted-foreground"
+                                            >
+                                                Last evaluation ·
+                                                {{ formatDateTime(resume.last_evaluated_at) }}
+                                            </span>
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-4 align-top">
+                                        <div
+                                            v-if="resume.tailored_for.length"
+                                            class="flex flex-col gap-2"
+                                        >
+                                            <div
+                                                v-for="target in resume.tailored_for"
+                                                :key="target.job_id"
+                                                class="rounded-lg border border-border/60 bg-background/80 px-3 py-2 text-sm shadow-sm"
+                                            >
+                                                <p class="font-medium text-foreground">
+                                                    {{ target.job_title || 'Untitled role' }}
+                                                </p>
+                                                <p
+                                                    v-if="target.company"
+                                                    class="text-xs text-muted-foreground"
+                                                >
+                                                    {{ target.company }}
+                                                </p>
+                                            </div>
+                                            <p
+                                                v-if="resume.tailored_count > resume.tailored_for.length"
+                                                class="text-xs font-medium text-muted-foreground"
+                                            >
+                                                +{{
+                                                    resume.tailored_count -
+                                                    resume.tailored_for.length
+                                                }}
+                                                more tailored
+                                                version{{
+                                                    resume.tailored_count -
+                                                        resume.tailored_for.length ===
+                                                    1
+                                                        ? ''
+                                                        : 's'
+                                                }}
+                                            </p>
+                                        </div>
+                                        <div
+                                            v-else
+                                            class="text-sm text-muted-foreground"
+                                        >
+                                            <p>No tailored versions yet.</p>
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-4 align-top">
+                                        <div
+                                            class="flex flex-wrap items-center gap-2"
+                                        >
+                                            <Button size="sm" as-child>
+                                                <Link
+                                                    :href="
+                                                        resumeRoutes.show({
+                                                            slug: resume.slug,
+                                                        }).url
+                                                    "
+                                                >
+                                                    Open
+                                                </Link>
+                                            </Button>
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                as-child
+                                            >
+                                                <Link
+                                                    :href="`${resumeRoutes.show({
+                                                        slug: resume.slug,
+                                                    }).url}#evaluate`"
+                                                >
+                                                    Evaluate
+                                                </Link>
+                                            </Button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                     <div
                         v-else
-                        class="flex flex-col items-start gap-4 rounded-lg border border-dashed border-border/60 p-6 text-sm text-muted-foreground"
+                        class="flex flex-col items-start gap-5 rounded-xl border border-dashed border-border/60 bg-background/70 p-8 text-sm text-muted-foreground"
                     >
-                        <h2 class="text-lg font-medium text-foreground">
-                            You have not added a resume yet.
-                        </h2>
+                        <div class="flex items-center gap-3 text-primary">
+                            <Sparkles class="size-5" />
+                            <span class="text-sm font-semibold">
+                                No resumes yet
+                            </span>
+                        </div>
                         <p>
-                            Add your base resume in markdown using the form on
-                            the right to get started.
+                            Upload your base resume to start tailoring for
+                            roles. Use the form on the right to add your first
+                            version.
                         </p>
                     </div>
                 </section>
 
-                <section
-                    class="rounded-lg border border-border/60 bg-background/60 p-6 shadow-sm dark:border-border/40"
+                <aside
+                    class="flex flex-col gap-4 rounded-2xl border border-border/60 bg-card/80 p-6 shadow-sm"
                 >
-                    <header class="mb-4">
+                    <header class="space-y-1">
                         <h2 class="text-lg font-semibold text-foreground">
                             Add a resume
                         </h2>
                         <p class="text-sm text-muted-foreground">
-                            Provide a descriptive title and paste your markdown
-                            resume content.
+                            Give it a clear name and paste your markdown resume
+                            content.
                         </p>
                     </header>
 
-                    <form class="flex flex-col gap-4" @submit.prevent="submit">
+                    <form class="flex flex-col gap-5" @submit.prevent="submit">
                         <div class="space-y-2">
                             <Label for="title">Title</Label>
                             <Input
@@ -168,6 +363,10 @@ const submit = () => {
                                 placeholder="Product Manager Resume"
                                 :aria-invalid="!!form.errors.title"
                             />
+                            <p class="text-xs text-muted-foreground">
+                                Include the role or specialization so you can
+                                find it quickly later.
+                            </p>
                             <InputError :message="form.errors.title" />
                         </div>
 
@@ -191,7 +390,7 @@ const submit = () => {
                                 v-model="form.content_markdown"
                                 name="content_markdown"
                                 rows="12"
-                                class="min-h-[220px] w-full rounded-md border border-border/70 bg-background px-3 py-2 text-sm font-mono leading-relaxed text-foreground shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 dark:border-border/40 dark:bg-background/40"
+                                class="min-h-[240px] w-full rounded-lg border border-border/70 bg-background px-3 py-3 text-sm font-mono leading-relaxed text-foreground shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
                                 placeholder="# Summary&#10;&#10;Detail your experience..."
                                 :aria-invalid="!!form.errors.content_markdown"
                             />
@@ -206,13 +405,13 @@ const submit = () => {
                             Save resume
                         </Button>
                     </form>
-                </section>
+                </aside>
             </div>
 
             <section
-                class="rounded-lg border border-border/60 bg-background/60 p-6 shadow-sm dark:border-border/40"
+                class="rounded-2xl border border-border/60 bg-card/80 p-6 shadow-sm"
             >
-                <header class="mb-4 flex items-center justify-between">
+                <header class="flex flex-wrap items-center justify-between gap-4">
                     <div>
                         <h2 class="text-lg font-semibold text-foreground">
                             Recent evaluations
@@ -221,76 +420,90 @@ const submit = () => {
                             Latest analysis results across all of your resumes.
                         </p>
                     </div>
-                    <span class="text-sm text-muted-foreground">
+                    <span
+                        class="rounded-full border border-border/60 bg-muted/40 px-3 py-1 text-xs font-medium uppercase tracking-wide text-muted-foreground"
+                    >
                         {{ props.recent_evaluations.length }} total
                     </span>
                 </header>
 
-                <div v-if="hasRecentEvaluations" class="flex flex-col gap-4">
+                <div
+                    v-if="hasRecentEvaluations"
+                    class="mt-4 divide-y divide-border/60"
+                >
                     <article
                         v-for="evaluation in props.recent_evaluations"
                         :key="evaluation.id"
-                        class="flex flex-col gap-2 rounded-md border border-border/60 bg-background/70 p-4 shadow-sm transition hover:border-primary/70 hover:shadow-md dark:border-border/40"
+                        class="flex flex-wrap items-start justify-between gap-4 py-4 first:pt-0 last:pb-0"
                     >
-                        <div class="flex flex-wrap items-center justify-between gap-3">
-                            <div>
-                                <p class="text-sm font-medium text-foreground">
+                        <div class="min-w-[220px] flex-1 space-y-1">
+                            <div class="flex items-center gap-2">
+                                <p class="text-sm font-semibold text-foreground">
                                     {{ evaluation.resume.title || 'Resume' }}
                                 </p>
-                                <Link
-                                    v-if="evaluation.resume.slug"
-                                    :href="resumeRoutes.show({ slug: evaluation.resume.slug }).url"
-                                    class="text-sm text-primary underline-offset-4 hover:underline"
+                                <span
+                                    :class="[
+                                        'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium uppercase tracking-wide',
+                                        evaluationStatusClass(evaluation.status),
+                                    ]"
                                 >
-                                    View timeline
-                                </Link>
+                                    {{ evaluationStatusLabel(evaluation.status) }}
+                                </span>
                             </div>
-                            <span
-                                class="rounded-full border border-border/60 px-3 py-1 text-xs font-medium uppercase tracking-wide text-muted-foreground"
+                            <p
+                                v-if="evaluation.headline"
+                                class="text-sm text-muted-foreground"
                             >
-                                {{ evaluation.status }}
-                            </span>
+                                {{ evaluation.headline }}
+                            </p>
                         </div>
 
-                        <p
-                            v-if="evaluation.headline"
-                            class="text-sm font-medium text-foreground"
-                        >
-                            {{ evaluation.headline }}
-                        </p>
-
-                        <div class="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                            <span>
+                        <div class="min-w-[200px] flex-1 text-sm text-muted-foreground">
+                            <p class="font-medium text-foreground">
                                 {{
                                     evaluation.job_description.title ||
                                     evaluation.job_description.source_label
                                 }}
-                            </span>
-                            <template v-if="evaluation.job_description.url">
-                                <span>•</span>
-                                <a
-                                    :href="evaluation.job_description.url"
-                                    target="_blank"
-                                    rel="noopener"
-                                    class="text-primary underline-offset-4 hover:underline"
-                                >
-                                    View posting
-                                </a>
-                            </template>
-                            <span v-else class="text-xs text-muted-foreground">
-                                Manual input
-                            </span>
+                            </p>
+                            <div
+                                class="inline-flex items-center gap-2 text-xs text-muted-foreground"
+                            >
+                                <template v-if="evaluation.job_description.url">
+                                    <a
+                                        :href="evaluation.job_description.url"
+                                        target="_blank"
+                                        rel="noopener"
+                                        class="text-primary underline-offset-4 hover:underline"
+                                    >
+                                        View posting
+                                    </a>
+                                </template>
+                                <span v-else>Manual input</span>
+                            </div>
                         </div>
 
-                        <p class="text-xs text-muted-foreground">
-                            {{ evaluation.completed_at ? new Date(evaluation.completed_at).toLocaleString() : 'Pending' }}
-                        </p>
+                        <div class="flex flex-col items-end gap-2 text-xs text-muted-foreground">
+                            <span>
+                                {{ formatDateTime(evaluation.completed_at) || 'Pending' }}
+                            </span>
+                            <Link
+                                v-if="evaluation.resume.slug"
+                                :href="
+                                    resumeRoutes.show({
+                                        slug: evaluation.resume.slug,
+                                    }).url
+                                "
+                                class="text-xs font-medium text-primary underline-offset-4 hover:underline"
+                            >
+                                View timeline
+                            </Link>
+                        </div>
                     </article>
                 </div>
 
                 <div
                     v-else
-                    class="rounded-md border border-dashed border-border/60 p-6 text-sm text-muted-foreground"
+                    class="mt-4 rounded-xl border border-dashed border-border/60 bg-background/80 p-8 text-sm text-muted-foreground"
                 >
                     Run an evaluation to see it appear here.
                 </div>

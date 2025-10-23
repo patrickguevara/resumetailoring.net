@@ -18,6 +18,8 @@ class StoreResumeEvaluationRequest extends FormRequest
             'job_url' => ['nullable', 'required_if:job_input_type,url', 'url', 'max:2048'],
             'job_text' => ['nullable', 'required_if:job_input_type,text', 'string', 'min:10', 'max:20000'],
             'job_title' => ['nullable', 'string', 'max:255'],
+            'job_company' => ['nullable', 'string', 'max:255'],
+            'model' => ['required', 'in:gpt-5-nano,gpt-5-mini'],
             'notes' => ['nullable', 'string', 'max:2000'],
         ];
     }

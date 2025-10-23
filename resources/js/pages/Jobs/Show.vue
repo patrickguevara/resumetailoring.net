@@ -19,23 +19,27 @@ import {
     Sparkles,
 } from 'lucide-vue-next';
 
-interface ResumeDetail {
-    id: number;
-    slug: string;
-    title: string;
-    description?: string | null;
-    content_markdown: string;
-    created_at?: string | null;
-    updated_at?: string | null;
-}
-
-interface JobDescriptionSummary {
+interface JobDetail {
     id: number;
     title?: string | null;
-    url?: string | null;
+    company?: string | null;
+    source_url?: string | null;
     source_label: string;
     is_manual: boolean;
-    company?: string | null;
+    description_markdown?: string | null;
+    created_at?: string | null;
+    updated_at?: string | null;
+    company_research: {
+        summary?: string | null;
+        last_ran_at?: string | null;
+        model?: string | null;
+    };
+}
+
+interface ResumeOption {
+    id: number;
+    title: string;
+    slug: string;
 }
 
 interface Evaluation {
@@ -45,10 +49,13 @@ interface Evaluation {
     model?: string | null;
     notes?: string | null;
     feedback_markdown?: string | null;
+    resume: {
+        id?: number | null;
+        title?: string | null;
+        slug?: string | null;
+    };
     completed_at?: string | null;
     created_at?: string | null;
-    job_description: JobDescriptionSummary;
-    tailored_count: number;
 }
 
 interface TailoredResume {
@@ -58,46 +65,57 @@ interface TailoredResume {
     content_markdown: string;
     evaluation_id?: number | null;
     created_at?: string | null;
-    job_description?: JobDescriptionSummary | null;
+    resume?: {
+        id?: number | null;
+        title?: string | null;
+        slug?: string | null;
+    } | null;
 }
 
 const props = defineProps<{
-    resume: ResumeDetail;
+    job: JobDetail;
     evaluations: Evaluation[];
     tailored_resumes: TailoredResume[];
+    resumes: ResumeOption[];
 }>();
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
-        title: 'Resumes',
-        href: resumeRoutes.index.url(),
+        title: 'Jobs',
+        href: jobsRoutes.index.url(),
     },
     {
-        title: props.resume.title,
-        href: resumeRoutes.show({ slug: props.resume.slug }).url,
+        title: props.job.title ?? 'Job',
+        href: jobsRoutes.show({ job: props.job.id }).url,
     },
 ];
 
+const initialResumeId =
+    props.resumes.length > 0 ? props.resumes[0].id : null;
+
 const evaluationForm = useForm({
-    job_input_type: 'url',
-    job_url: '',
-    job_text: '',
-    job_title: '',
-    job_company: '',
+    resume_id: initialResumeId as number | null,
     model: 'gpt-5-nano',
     notes: '',
+    job_url_override: '',
+});
+
+const researchForm = useForm({
+    company: props.job.company ?? '',
+    model: props.job.company_research.model ?? 'gpt-5-mini',
+    focus: '',
 });
 
 const availableModels = [
     {
         id: 'gpt-5-nano',
         label: 'gpt-5-nano',
-        helper: 'Fast, cost-effective checks',
+        helper: 'Quick comparison, lower cost',
     },
     {
         id: 'gpt-5-mini',
         label: 'gpt-5-mini',
-        helper: 'Deeper analysis for critical roles',
+        helper: 'Deeper, more detailed analysis',
     },
 ];
 
@@ -145,21 +163,19 @@ watch(
 );
 
 watch(
-    () => evaluationForm.job_input_type,
-    (type) => {
-        if (type === 'url') {
-            evaluationForm.clearErrors('job_text');
-
-            return;
+    () => props.resumes.map((resume) => resume.id),
+    (resumeIds) => {
+        if (
+            evaluationForm.resume_id === null ||
+            !resumeIds.includes(evaluationForm.resume_id)
+        ) {
+            evaluationForm.resume_id = resumeIds[0] ?? null;
         }
-
-        evaluationForm.clearErrors('job_url');
     },
+    { immediate: true },
 );
 
 const hasEvaluations = computed(() => props.evaluations.length > 0);
-const hasTailoredResumes = computed(() => props.tailored_resumes.length > 0);
-
 const activeEvaluation = computed(
     () =>
         props.evaluations.find(
@@ -224,11 +240,29 @@ const formatDateTime = (value?: string | null) => {
 };
 
 const submitEvaluation = () => {
+    if (evaluationForm.resume_id === null) {
+        return;
+    }
+
     evaluationForm.post(
-        resumeRoutes.evaluations.store.url({ resume: props.resume.slug }),
+        jobsRoutes.evaluations.store({ job: props.job.id }).url,
         {
             preserveScroll: true,
-            onSuccess: () => evaluationForm.reset(),
+            onSuccess: () => {
+                evaluationForm.reset('notes', 'job_url_override');
+            },
+        },
+    );
+};
+
+const submitResearch = () => {
+    researchForm.post(
+        jobsRoutes.research.store({ job: props.job.id }).url,
+        {
+            preserveScroll: true,
+            onSuccess: () => {
+                researchForm.reset('focus');
+            },
         },
     );
 };
@@ -269,12 +303,12 @@ const globalErrors = computed(() => page.props.errors ?? {});
 </script>
 
 <template>
-    <Head :title="`Resume · ${resume.title}`" />
+    <Head :title="`Job · ${job.title ?? 'Job'}`" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
         <div class="space-y-8 px-6 py-8">
             <section
-                class="rounded-2xl border border-border/60 bg-gradient-to-br from-primary/10 via-background to-background p-6 shadow-sm"
+                class="rounded-2xl border border-border/60 bg-gradient-to-br from-accent/20 via-background to-background p-6 shadow-sm"
             >
                 <div
                     class="flex flex-wrap items-start justify-between gap-4"
@@ -284,25 +318,36 @@ const globalErrors = computed(() => page.props.errors ?? {});
                             class="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-primary"
                         >
                             <Sparkles class="size-3.5" />
-                            Resume overview
+                            Job overview
                         </p>
                         <h1 class="text-3xl font-semibold text-foreground">
-                            {{ resume.title }}
+                            {{ job.title || 'Untitled role' }}
                         </h1>
-                        <p
-                            v-if="resume.description"
-                            class="max-w-3xl text-sm text-muted-foreground"
-                        >
-                            {{ resume.description }}
+                        <p class="text-sm text-muted-foreground">
+                            {{ job.company || 'Company not specified yet.' }}
                         </p>
                     </div>
                     <div class="flex flex-wrap items-center gap-2">
-                        <Button variant="outline" size="sm">
-                            Duplicate
+                        <Button
+                            v-if="job.source_url"
+                            as-child
+                            variant="outline"
+                            size="sm"
+                        >
+                            <a
+                                :href="job.source_url"
+                                target="_blank"
+                                rel="noopener"
+                            >
+                                View posting
+                            </a>
                         </Button>
-                        <Button variant="secondary" size="sm">
-                            Export markdown
-                        </Button>
+                        <Badge
+                            v-if="job.is_manual"
+                            class="border-muted/60 bg-muted/30 text-muted-foreground"
+                        >
+                            Manual entry
+                        </Badge>
                     </div>
                 </div>
                 <div
@@ -310,22 +355,16 @@ const globalErrors = computed(() => page.props.errors ?? {});
                 >
                     <span class="inline-flex items-center gap-1">
                         <CalendarClock class="size-3.5" />
-                        Added {{ formatDate(resume.created_at) ?? '—' }}
+                        Added {{ formatDate(job.created_at) ?? '—' }}
                     </span>
                     <span>•</span>
                     <span>
-                        Updated {{ formatDateTime(resume.updated_at) ?? '—' }}
+                        Updated {{ formatDateTime(job.updated_at) ?? '—' }}
                     </span>
                     <span>•</span>
                     <span>
-                        {{ props.evaluations.length }} evaluation{{
-                            props.evaluations.length === 1 ? '' : 's'
-                        }}
-                    </span>
-                    <span>•</span>
-                    <span>
-                        {{ props.tailored_resumes.length }} tailored version{{
-                            props.tailored_resumes.length === 1 ? '' : 's'
+                        {{ evaluations.length }} evaluation{{
+                            evaluations.length === 1 ? '' : 's'
                         }}
                     </span>
                 </div>
@@ -341,9 +380,9 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                 Run a new evaluation
                             </h2>
                             <p class="text-sm text-muted-foreground">
-                                Compare this resume against a job by URL or by
-                                pasting the description. Choose the model that
-                                best fits your review depth.
+                                Select a resume and model to compare against
+                                this job. Optionally refresh the posting via a
+                                new URL.
                             </p>
                         </header>
 
@@ -351,131 +390,34 @@ const globalErrors = computed(() => page.props.errors ?? {});
                             class="mt-4 flex flex-col gap-5"
                             @submit.prevent="submitEvaluation"
                         >
-                            <div>
-                                <Label class="text-xs font-semibold uppercase">
-                                    Job description source
-                                </Label>
-                                <div class="mt-2 grid grid-cols-2 gap-2">
-                                    <Button
-                                        type="button"
-                                        size="sm"
-                                        :variant="
-                                            evaluationForm.job_input_type === 'url'
-                                                ? 'default'
-                                                : 'outline'
-                                        "
-                                        class="justify-center"
-                                        @click="
-                                            evaluationForm.job_input_type = 'url'
-                                        "
-                                    >
-                                        Job URL
-                                    </Button>
-                                    <Button
-                                        type="button"
-                                        size="sm"
-                                        :variant="
-                                            evaluationForm.job_input_type === 'text'
-                                                ? 'default'
-                                                : 'outline'
-                                        "
-                                        class="justify-center"
-                                        @click="
-                                            evaluationForm.job_input_type = 'text'
-                                        "
-                                    >
-                                        Paste description
-                                    </Button>
-                                </div>
-                            </div>
-
-                            <div class="grid gap-4 sm:grid-cols-2">
-                                <div class="space-y-2">
-                                    <Label for="job_title"
-                                        >Role title</Label
-                                    >
-                                    <Input
-                                        id="job_title"
-                                        v-model="evaluationForm.job_title"
-                                        name="job_title"
-                                        type="text"
-                                        placeholder="Senior Product Manager"
-                                        :aria-invalid="
-                                            !!evaluationForm.errors.job_title
-                                        "
-                                    />
-                                    <InputError
-                                        :message="evaluationForm.errors.job_title"
-                                    />
-                                </div>
-                                <div class="space-y-2">
-                                    <Label for="job_company">Company</Label>
-                                    <Input
-                                        id="job_company"
-                                        v-model="evaluationForm.job_company"
-                                        name="job_company"
-                                        type="text"
-                                        placeholder="Acme Robotics"
-                                        :aria-invalid="
-                                            !!evaluationForm.errors.job_company
-                                        "
-                                    />
-                                    <InputError
-                                        :message="
-                                            evaluationForm.errors.job_company
-                                        "
-                                    />
-                                </div>
-                            </div>
-
-                            <div
-                                v-if="evaluationForm.job_input_type === 'url'"
-                                class="space-y-2"
-                            >
-                                <Label for="job_url">Job posting URL</Label>
-                                <Input
-                                    id="job_url"
-                                    v-model="evaluationForm.job_url"
-                                    name="job_url"
-                                    type="url"
-                                    placeholder="https://company.com/careers/role"
+                            <div class="space-y-2">
+                                <Label for="resume_id">Select resume</Label>
+                                <select
+                                    id="resume_id"
+                                    v-model.number="evaluationForm.resume_id"
+                                    name="resume_id"
+                                    class="w-full rounded-lg border border-border/70 bg-background px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
                                     :aria-invalid="
-                                        !!(evaluationForm.errors.job_url || globalErrors.job_url)
+                                        !!evaluationForm.errors.resume_id
                                     "
-                                />
-                                <InputError
-                                    :message="
-                                        evaluationForm.errors.job_url ||
-                                        globalErrors.job_url
-                                    "
-                                />
-                            </div>
-
-                            <div
-                                v-else
-                                class="space-y-2"
-                            >
-                                <Label for="job_text"
-                                    >Job description (markdown
-                                    supported)</Label
                                 >
-                                <textarea
-                                    id="job_text"
-                                    v-model="evaluationForm.job_text"
-                                    name="job_text"
-                                    rows="8"
-                                    class="min-h-[200px] w-full rounded-lg border border-border/70 bg-background px-3 py-3 text-sm text-foreground shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
-                                    placeholder="## About the role&#10;&#10;Paste the responsibilities and qualifications..."
-                                    :aria-invalid="
-                                        !!(evaluationForm.errors.job_text || globalErrors.job_text)
-                                    "
-                                />
+                                    <option
+                                        v-for="resumeOption in props.resumes"
+                                        :key="resumeOption.id"
+                                        :value="resumeOption.id"
+                                    >
+                                        {{ resumeOption.title }}
+                                    </option>
+                                </select>
                                 <InputError
-                                    :message="
-                                        evaluationForm.errors.job_text ||
-                                        globalErrors.job_text
-                                    "
+                                    :message="evaluationForm.errors.resume_id"
                                 />
+                                <p
+                                    v-if="props.resumes.length === 0"
+                                    class="text-xs text-muted-foreground"
+                                >
+                                    Add a resume first to evaluate this job.
+                                </p>
                             </div>
 
                             <div class="space-y-2">
@@ -507,23 +449,55 @@ const globalErrors = computed(() => page.props.errors ?? {});
                             </div>
 
                             <div class="space-y-2">
-                                <Label for="notes"
-                                    >Notes for this run (optional)</Label
+                                <Label for="job_url_override"
+                                    >Refresh job from URL (optional)</Label
+                                >
+                                <Input
+                                    id="job_url_override"
+                                    v-model="evaluationForm.job_url_override"
+                                    name="job_url_override"
+                                    type="url"
+                                    placeholder="https://company.com/careers/updated-role"
+                                    :aria-invalid="
+                                        !!(
+                                            evaluationForm.errors.job_url_override ||
+                                            globalErrors.job_url_override
+                                        )
+                                    "
+                                />
+                                <InputError
+                                    :message="
+                                        evaluationForm.errors.job_url_override ||
+                                        globalErrors.job_url_override
+                                    "
+                                />
+                                <p class="text-xs text-muted-foreground">
+                                    Provide a new URL if the posting has been
+                                    updated or moved.
+                                </p>
+                            </div>
+
+                            <div class="space-y-2">
+                                <Label for="evaluation_notes"
+                                    >Notes (optional)</Label
                                 >
                                 <textarea
-                                    id="notes"
+                                    id="evaluation_notes"
                                     v-model="evaluationForm.notes"
                                     name="notes"
                                     rows="3"
-                                    class="w-full rounded-lg border border-border/70 bg-background px-3 py-3 text-sm text-foreground shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
-                                    placeholder="Remind yourself why you ran this evaluation."
+                                    class="w-full rounded-lg border border-border/70 bg-background px-3 py-3 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+                                    placeholder="Why are you re-running this evaluation?"
                                 />
                                 <InputError :message="evaluationForm.errors.notes" />
                             </div>
 
                             <Button
                                 type="submit"
-                                :disabled="evaluationForm.processing"
+                                :disabled="
+                                    evaluationForm.processing ||
+                                    evaluationForm.resume_id === null
+                                "
                                 class="justify-center"
                             >
                                 <CircleCheck class="mr-2 size-4" />
@@ -535,27 +509,147 @@ const globalErrors = computed(() => page.props.errors ?? {});
                     <div
                         class="rounded-2xl border border-border/60 bg-card/80 p-6 shadow-sm"
                     >
+                        <header class="space-y-1">
+                            <h2 class="text-lg font-semibold text-foreground">
+                                Company research
+                            </h2>
+                            <p class="text-sm text-muted-foreground">
+                                Generate a briefing to prepare for outreach and
+                                interviews. Update the company name and focus
+                                areas as needed.
+                            </p>
+                        </header>
+
+                        <div
+                            v-if="job.company_research.summary"
+                            class="mt-4 space-y-3 rounded-xl border border-border/60 bg-background/80 p-4"
+                        >
+                            <div
+                                class="flex flex-wrap items-center justify-between gap-2"
+                            >
+                                <h3 class="text-sm font-semibold text-foreground">
+                                    Latest briefing
+                                </h3>
+                                <span class="text-xs text-muted-foreground">
+                                    {{
+                                        formatDateTime(
+                                            job.company_research.last_ran_at,
+                                        ) || '—'
+                                    }}
+                                </span>
+                            </div>
+                            <MarkdownViewer
+                                :content="job.company_research.summary"
+                            />
+                        </div>
+
+                        <form
+                            class="mt-6 flex flex-col gap-5"
+                            @submit.prevent="submitResearch"
+                        >
+                            <div class="space-y-2">
+                                <Label for="company_name">Company name</Label>
+                                <Input
+                                    id="company_name"
+                                    v-model="researchForm.company"
+                                    name="company"
+                                    type="text"
+                                    placeholder="Acme Robotics"
+                                    :aria-invalid="
+                                        !!(
+                                            researchForm.errors.company ||
+                                            globalErrors.company
+                                        )
+                                    "
+                                />
+                                <InputError
+                                    :message="
+                                        researchForm.errors.company ||
+                                        globalErrors.company
+                                    "
+                                />
+                            </div>
+
+                            <div class="space-y-2">
+                                <Label>Model</Label>
+                                <div class="grid gap-2">
+                                    <button
+                                        v-for="model in availableModels"
+                                        :key="model.id"
+                                        type="button"
+                                        :class="[
+                                            'flex flex-col gap-1 rounded-lg border px-3 py-2 text-left transition',
+                                            researchForm.model === model.id
+                                                ? 'border-primary bg-primary/10 text-foreground shadow-sm'
+                                                : 'border-border/60 bg-background/70 text-muted-foreground hover:border-primary/60 hover:bg-primary/5',
+                                        ]"
+                                        @click="researchForm.model = model.id"
+                                    >
+                                        <span class="text-sm font-medium">
+                                            {{ model.label }}
+                                        </span>
+                                        <span class="text-xs">
+                                            {{ model.helper }}
+                                        </span>
+                                    </button>
+                                </div>
+                                <InputError
+                                    :message="researchForm.errors.model"
+                                />
+                            </div>
+
+                            <div class="space-y-2">
+                                <Label for="research_focus"
+                                    >Focus areas (optional)</Label
+                                >
+                                <textarea
+                                    id="research_focus"
+                                    v-model="researchForm.focus"
+                                    name="focus"
+                                    rows="3"
+                                    class="w-full rounded-lg border border-border/70 bg-background px-3 py-3 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+                                    placeholder="Upcoming product launch, regional market dynamics, hiring initiatives..."
+                                />
+                                <InputError :message="researchForm.errors.focus" />
+                            </div>
+
+                            <Button
+                                type="submit"
+                                :disabled="researchForm.processing"
+                                class="justify-center"
+                            >
+                                <Sparkles class="mr-2 size-4" />
+                                Run company research
+                            </Button>
+                        </form>
+                    </div>
+                </section>
+
+                <section class="space-y-6">
+                    <div
+                        class="rounded-2xl border border-border/60 bg-card/80 p-6 shadow-sm"
+                    >
                         <header class="flex items-center justify-between gap-3">
                             <div>
                                 <h2 class="text-lg font-semibold text-foreground">
                                     Evaluation history
                                 </h2>
                                 <p class="text-sm text-muted-foreground">
-                                    Review prior runs and switch between them to
-                                    inspect feedback.
+                                    Compare how each resume performed against
+                                    this job over time.
                                 </p>
                             </div>
                             <Badge
                                 class="border-border/60 bg-muted/40 text-muted-foreground"
                             >
-                                {{ props.evaluations.length }} total
+                                {{ evaluations.length }} total
                             </Badge>
                         </header>
 
                         <div class="mt-4 space-y-3">
                             <template v-if="hasEvaluations">
                                 <button
-                                    v-for="evaluation in props.evaluations"
+                                    v-for="evaluation in evaluations"
                                     :key="evaluation.id"
                                     type="button"
                                     :class="[
@@ -572,21 +666,15 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                         <div class="space-y-1">
                                             <p class="text-sm font-semibold text-foreground">
                                                 {{
-                                                    evaluation.job_description.title ||
-                                                    evaluation.job_description.source_label
+                                                    evaluation.resume.title ||
+                                                    'Resume'
                                                 }}
                                             </p>
-                                        <p
+                                            <p
                                                 v-if="evaluation.headline"
                                                 class="text-xs text-muted-foreground"
                                             >
                                                 {{ evaluation.headline }}
-                                            </p>
-                                            <p
-                                                v-if="evaluation.job_description.company"
-                                                class="text-xs text-muted-foreground"
-                                            >
-                                                {{ evaluation.job_description.company }}
                                             </p>
                                         </div>
                                         <Badge
@@ -607,7 +695,6 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                         class="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground"
                                     >
                                         <span>
-                                            Model:
                                             {{ evaluation.model || '—' }}
                                         </span>
                                         <span>•</span>
@@ -618,11 +705,6 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                                 ) || 'Pending'
                                             }}
                                         </span>
-                                        <span>•</span>
-                                        <span>
-                                            {{ evaluation.tailored_count }}
-                                            tailored
-                                        </span>
                                     </div>
                                 </button>
                             </template>
@@ -630,125 +712,9 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                 v-else
                                 class="rounded-xl border border-dashed border-border/60 bg-background/80 p-6 text-sm text-muted-foreground"
                             >
-                                No evaluations yet. Run your first comparison to
-                                see the timeline populate.
+                                Evaluations will appear here once you compare a
+                                resume with this job.
                             </div>
-                        </div>
-                    </div>
-
-                    <div
-                        class="rounded-2xl border border-border/60 bg-card/80 p-6 shadow-sm"
-                    >
-                        <header class="flex items-center justify-between gap-3">
-                            <div>
-                                <h2 class="text-lg font-semibold text-foreground">
-                                    Tailored resumes
-                                </h2>
-                                <p class="text-sm text-muted-foreground">
-                                    Every tailored version generated from this
-                                    resume across your evaluations.
-                                </p>
-                            </div>
-                            <Badge
-                                class="border-border/60 bg-muted/40 text-muted-foreground"
-                            >
-                                {{ props.tailored_resumes.length }} total
-                            </Badge>
-                        </header>
-
-                        <div class="mt-4 space-y-4">
-                            <template v-if="hasTailoredResumes">
-                                <article
-                                    v-for="tailored in props.tailored_resumes"
-                                    :key="tailored.id"
-                                    class="rounded-xl border border-border/60 bg-background/70 p-4"
-                                >
-                                    <div
-                                        class="flex flex-wrap items-start justify-between gap-3"
-                                    >
-                                        <div>
-                                            <p class="text-sm font-semibold text-foreground">
-                                                {{
-                                                    tailored.title ||
-                                                    'Tailored resume'
-                                                }}
-                                            </p>
-                                            <p class="text-xs text-muted-foreground">
-                                                {{
-                                                    formatDateTime(
-                                                        tailored.created_at,
-                                                    ) || '—'
-                                                }}
-                                            </p>
-                                        </div>
-                                        <Badge
-                                            class="border-secondary/40 bg-secondary/20 text-secondary-foreground"
-                                        >
-                                            {{ tailored.model || 'gpt-5-mini' }}
-                                        </Badge>
-                                    </div>
-                                    <p
-                                        v-if="tailored.job_description"
-                                        class="mt-2 text-xs text-muted-foreground"
-                                    >
-                                        {{
-                                            tailored.job_description.title ||
-                                            tailored.job_description.source_label
-                                        }}
-                                    </p>
-                                    <div class="mt-3 space-y-2">
-                                        <Button
-                                            size="sm"
-                                            variant="ghost"
-                                            class="justify-start"
-                                            @click="toggleTailoredPreview(tailored.id)"
-                                        >
-                                            <FileText class="mr-2 size-4" />
-                                            {{
-                                                expandedTailored[tailored.id]
-                                                    ? 'Hide markdown'
-                                                    : 'View markdown'
-                                            }}
-                                        </Button>
-                                        <div
-                                            v-if="expandedTailored[tailored.id]"
-                                            class="rounded-lg border border-border/60 bg-background/80 p-3"
-                                        >
-                                            <MarkdownViewer
-                                                :content="tailored.content_markdown"
-                                            />
-                                        </div>
-                                    </div>
-                                </article>
-                            </template>
-                            <div
-                                v-else
-                                class="rounded-xl border border-dashed border-border/60 bg-background/80 p-6 text-sm text-muted-foreground"
-                            >
-                                Tailored resumes will appear here once you
-                                generate them from a completed evaluation.
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                <section class="space-y-6">
-                    <div
-                        class="rounded-2xl border border-border/60 bg-card/80 p-6 shadow-sm"
-                    >
-                        <header class="mb-4">
-                            <h2 class="text-lg font-semibold text-foreground">
-                                Resume preview
-                            </h2>
-                            <p class="text-sm text-muted-foreground">
-                                Review the current markdown that will be used
-                                for every evaluation and tailored variation.
-                            </p>
-                        </header>
-                        <div
-                            class="rounded-xl border border-border/60 bg-background/80 p-4"
-                        >
-                            <MarkdownViewer :content="resume.content_markdown" />
                         </div>
                     </div>
 
@@ -761,8 +727,8 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                     Evaluation detail
                                 </h2>
                                 <p class="text-sm text-muted-foreground">
-                                    Dive into the selected evaluation’s
-                                    feedback, notes, and tailored outputs.
+                                    Inspect the selected evaluation’s feedback
+                                    and tailored outputs.
                                 </p>
                             </div>
                             <Badge
@@ -772,9 +738,7 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                 "
                             >
                                 {{
-                                    evaluationStatusLabel(
-                                        activeEvaluation.status,
-                                    )
+                                    evaluationStatusLabel(activeEvaluation.status)
                                 }}
                             </Badge>
                         </header>
@@ -784,69 +748,47 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                 class="rounded-xl border border-border/60 bg-background/80 p-4"
                             >
                                 <div
-                                    class="flex flex-wrap items-start justify-between gap-3"
+                                    class="flex flex-wrap items-center justify-between gap-3"
                                 >
-                                    <div>
+                                    <div class="space-y-1">
                                         <p class="text-sm font-semibold text-foreground">
-                                            Target role
+                                            Resume used
                                         </p>
                                         <p class="text-sm text-muted-foreground">
                                             {{
-                                                activeEvaluation.job_description
-                                                    .title ||
-                                                activeEvaluation.job_description
-                                                    .source_label
-                                            }}
-                                        </p>
-                                        <p
-                                            v-if="activeEvaluation.job_description.company"
-                                            class="text-xs text-muted-foreground"
-                                        >
-                                            {{
-                                                activeEvaluation.job_description.company
+                                                activeEvaluation.resume.title ||
+                                                'Resume'
                                             }}
                                         </p>
                                     </div>
-                                    <Badge
-                                        class="border-secondary/40 bg-secondary/20 text-secondary-foreground"
+                                    <Button
+                                        v-if="activeEvaluation.resume.slug"
+                                        as-child
+                                        size="sm"
+                                        variant="outline"
                                     >
-                                        {{ activeEvaluation.model || '—' }}
-                                    </Badge>
+                                        <Link
+                                            :href="
+                                                resumeRoutes.show({
+                                                    slug: activeEvaluation
+                                                        .resume.slug as string,
+                                                }).url
+                                            "
+                                        >
+                                            Open resume
+                                        </Link>
+                                    </Button>
                                 </div>
                                 <div
-                                    class="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground"
+                                    class="mt-3 inline-flex items-center gap-2 text-xs text-muted-foreground"
                                 >
-                                    <template
-                                        v-if="
-                                            activeEvaluation.job_description.url
-                                        "
-                                    >
-                                        <a
-                                            :href="
-                                                activeEvaluation
-                                                    .job_description.url
-                                            "
-                                            target="_blank"
-                                            rel="noopener"
-                                            class="inline-flex items-center gap-1 text-primary underline-offset-4 hover:underline"
-                                        >
-                                            <FileText class="size-3.5" />
-                                            View posting
-                                        </a>
-                                        <span>•</span>
-                                    </template>
-                                    <Link
-                                        v-if="activeEvaluation.job_description.id"
-                                        :href="
-                                            jobsRoutes.show({
-                                                job: activeEvaluation
-                                                    .job_description.id,
-                                            }).url
-                                        "
-                                        class="inline-flex items-center gap-1 text-primary underline-offset-4 hover:underline"
-                                    >
-                                        Inspect job record
-                                    </Link>
+                                    <span>
+                                        {{
+                                            formatDateTime(
+                                                activeEvaluation.completed_at,
+                                            ) || 'Pending'
+                                        }}
+                                    </span>
                                 </div>
                             </div>
 
@@ -855,7 +797,7 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                 class="rounded-xl border border-border/60 bg-background/80 p-4"
                             >
                                 <p class="text-xs font-semibold uppercase text-muted-foreground">
-                                    Analyst note
+                                    Notes
                                 </p>
                                 <p class="mt-2 text-sm text-foreground">
                                     {{ activeEvaluation.notes }}
@@ -867,14 +809,10 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                     class="flex flex-wrap items-center justify-between gap-2"
                                 >
                                     <h3 class="text-sm font-semibold text-foreground">
-                                        Feedback summary
+                                        Feedback
                                     </h3>
                                     <span class="text-xs text-muted-foreground">
-                                        {{
-                                            formatDateTime(
-                                                activeEvaluation.completed_at,
-                                            ) || 'Pending'
-                                        }}
+                                        {{ activeEvaluation.model || '—' }}
                                     </span>
                                 </div>
                                 <div
@@ -901,7 +839,9 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                     <Badge
                                         class="border-border/60 bg-muted/50 text-muted-foreground"
                                     >
-                                        {{ activeEvaluation.tailored_count }}
+                                        {{
+                                            activeEvaluationTailored.length
+                                        }}
                                         existing
                                     </Badge>
                                 </div>
@@ -915,32 +855,25 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                         :id="`tailored-title-${activeEvaluation.id}`"
                                         v-model="tailorTitles[activeEvaluation.id]"
                                         type="text"
-                                        placeholder="Senior PM · Tailored"
+                                        placeholder="Tailored resume title"
                                     />
                                 </div>
-                                <div class="flex flex-wrap items-center gap-2">
-                                    <Button
-                                        size="sm"
-                                        :disabled="
-                                            tailorProcessing[activeEvaluation.id] ||
-                                            activeEvaluation.status !== 'completed'
-                                        "
-                                        @click="generateTailored(activeEvaluation)"
-                                    >
-                                        <Sparkles class="mr-2 size-4" />
-                                        {{
-                                            activeEvaluation.status === 'completed'
-                                                ? 'Generate tailored version'
-                                                : 'Available after completion'
-                                        }}
-                                    </Button>
-                                    <span
-                                        v-if="activeEvaluation.status !== 'completed'"
-                                        class="text-xs text-muted-foreground"
-                                    >
-                                        Wait for completion before tailoring.
-                                    </span>
-                                </div>
+
+                                <Button
+                                    size="sm"
+                                    :disabled="
+                                        tailorProcessing[activeEvaluation.id] ||
+                                        activeEvaluation.status !== 'completed'
+                                    "
+                                    @click="generateTailored(activeEvaluation)"
+                                >
+                                    <Sparkles class="mr-2 size-4" />
+                                    {{
+                                        activeEvaluation.status === 'completed'
+                                            ? 'Generate tailored version'
+                                            : 'Available after completion'
+                                    }}
+                                </Button>
                             </div>
 
                             <div class="space-y-3">
@@ -1013,8 +946,8 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                     v-else
                                     class="rounded-xl border border-dashed border-border/60 bg-background/70 p-4 text-sm text-muted-foreground"
                                 >
-                                    Generate a tailored resume to see it appear
-                                    here.
+                                    Generate a tailored resume from this
+                                    evaluation to see it here.
                                 </p>
                             </div>
                         </div>
@@ -1023,7 +956,28 @@ const globalErrors = computed(() => page.props.errors ?? {});
                             class="rounded-xl border border-dashed border-border/60 bg-background/80 p-6 text-sm text-muted-foreground"
                         >
                             Select an evaluation from the history panel to view
-                            its details.
+                            details.
+                        </div>
+                    </div>
+
+                    <div
+                        class="rounded-2xl border border-border/60 bg-card/80 p-6 shadow-sm"
+                    >
+                        <header class="mb-4">
+                            <h2 class="text-lg font-semibold text-foreground">
+                                Job description
+                            </h2>
+                            <p class="text-sm text-muted-foreground">
+                                Reference the source description that current
+                                evaluations use.
+                            </p>
+                        </header>
+                        <div
+                            class="rounded-xl border border-border/60 bg-background/80 p-4"
+                        >
+                            <MarkdownViewer
+                                :content="job.description_markdown ?? '*No description stored yet.*'"
+                            />
                         </div>
                     </div>
                 </section>

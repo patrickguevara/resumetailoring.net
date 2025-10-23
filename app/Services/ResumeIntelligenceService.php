@@ -20,9 +20,15 @@ class ResumeIntelligenceService
      *
      * @return array{model: string, content: string}
      */
-    public function evaluate(Resume $resume, JobDescription $job, ?string $jobUrlOverride = null): array
+    public function evaluate(
+        Resume $resume,
+        JobDescription $job,
+        ?string $jobUrlOverride = null,
+        ?string $modelOverride = null
+    ): array
     {
         $jobText = $this->resolveJobDescriptionText($job, $jobUrlOverride);
+        $model = $modelOverride ?: config('resume_intelligence.analysis.model');
 
         $prompt = $this->buildAnalysisPrompt(
             $jobText,
@@ -31,13 +37,13 @@ class ResumeIntelligenceService
         );
 
         $payload = $this->callOpenAI(
-            config('resume_intelligence.analysis.model'),
+            $model,
             config('resume_intelligence.analysis.system_prompt'),
             $prompt
         );
 
         return [
-            'model' => config('resume_intelligence.analysis.model'),
+            'model' => $model,
             'content' => $payload,
         ];
     }
@@ -61,6 +67,61 @@ class ResumeIntelligenceService
 
         return [
             'model' => config('resume_intelligence.tailor.model'),
+            'content' => $payload,
+        ];
+    }
+
+    /**
+     * Generate a company research briefing for a given job description.
+     *
+     * @return array{model: string, content: string}
+     */
+    public function researchCompany(
+        JobDescription $job,
+        string $companyName,
+        ?string $roleTitle = null,
+        ?string $focus = null,
+        ?string $modelOverride = null
+    ): array {
+        $jobText = $this->resolveJobDescriptionText($job);
+        $model = $modelOverride ?: config('resume_intelligence.research.model');
+        $systemPrompt = config('resume_intelligence.research.system_prompt');
+
+        $focusSegment = $focus !== null && $focus !== ''
+            ? "Focus areas requested by the user:\n{$focus}\n\n"
+            : '';
+
+        $role = $roleTitle !== null && $roleTitle !== ''
+            ? $roleTitle
+            : ($job->title ?: 'the target role');
+
+        $currentDate = now()->format('F j, Y');
+
+        $prompt = <<<PROMPT
+Current date: {$currentDate}
+Company: {$companyName}
+Target role: {$role}
+
+{$focusSegment}Job description:
+{$jobText}
+
+Provide a concise research briefing covering:
+- Recent company news, strategic moves, and leadership updates
+- Product or service highlights relevant to the role
+- Competitive landscape or market pressures to be aware of
+- Talking points or questions to raise in conversations or interviews
+
+Deliver the response in markdown with clear section headings and bullet lists.
+PROMPT;
+
+        $payload = $this->callOpenAI(
+            $model,
+            $systemPrompt,
+            $prompt
+        );
+
+        return [
+            'model' => $model,
             'content' => $payload,
         ];
     }

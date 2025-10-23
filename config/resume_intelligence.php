@@ -24,5 +24,14 @@ return [
             . 'Maintain markdown formatting with clear sections.'
         ),
     ],
+    'research' => [
+        'model' => env('OPENAI_RESEARCH_MODEL', 'gpt-5-mini'),
+        'system_prompt' => env(
+            'OPENAI_RESEARCH_SYSTEM_PROMPT',
+            'You are a market intelligence strategist preparing a briefing for a candidate. '
+            . 'Synthesize recent company developments, product focus areas, competition, and talking points relevant to the target role. '
+            . 'Be concise, factual, and actionable.'
+        ),
+    ],
     'base_url' => env('OPENAI_BASE_URL', 'https://api.openai.com/v1'),
 ];

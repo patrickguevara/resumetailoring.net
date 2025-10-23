@@ -1,5 +1,8 @@
 <?php
 
+use App\Http\Controllers\JobController;
+use App\Http\Controllers\JobEvaluationController;
+use App\Http\Controllers\JobResearchController;
 use App\Http\Controllers\ResumeController;
 use App\Http\Controllers\ResumeEvaluationController;
 use App\Http\Controllers\TailoredResumeController;
@@ -14,6 +17,13 @@ Route::middleware(['auth'])->group(function () {
     Route::get('dashboard', function () {
         return to_route('resumes.index');
     })->name('dashboard');
+
+    Route::get('jobs', [JobController::class, 'index'])->name('jobs.index');
+    Route::get('jobs/{job}', [JobController::class, 'show'])->name('jobs.show');
+    Route::post('jobs/{job}/evaluations', [JobEvaluationController::class, 'store'])
+        ->name('jobs.evaluations.store');
+    Route::post('jobs/{job}/research', [JobResearchController::class, 'store'])
+        ->name('jobs.research.store');
 
     Route::get('resumes', [ResumeController::class, 'index'])->name('resumes.index');
     Route::post('resumes', [ResumeController::class, 'store'])->name('resumes.store');

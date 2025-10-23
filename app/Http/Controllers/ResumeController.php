@@ -6,6 +6,7 @@ use App\Http\Requests\StoreResumeRequest;
 use App\Models\Resume;
 use App\Models\ResumeEvaluation;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 
@@ -16,17 +17,46 @@ class ResumeController extends Controller
         $resumes = $request->user()
             ->resumes()
             ->withCount(['evaluations', 'tailoredResumes'])
+            ->withMax('evaluations as last_evaluation_at', 'completed_at')
+            ->with([
+                'tailoredResumes' => fn ($query) => $query
+                    ->with('jobDescription')
+                    ->latest(),
+            ])
             ->latest()
             ->get()
-            ->map(fn (Resume $resume) => [
-                'id' => $resume->id,
-                'slug' => $resume->slug,
-                'title' => $resume->title,
-                'description' => $resume->description,
-                'evaluations_count' => $resume->evaluations_count,
-                'tailored_count' => $resume->tailored_resumes_count,
-                'updated_at' => $resume->updated_at?->toIso8601String(),
-            ])
+            ->map(function (Resume $resume) {
+                $tailoredFor = $resume->tailoredResumes
+                    ->filter(fn ($tailored) => $tailored->jobDescription !== null)
+                    ->map(fn ($tailored) => [
+                        'job_id' => $tailored->jobDescription->id,
+                        'job_title' => $tailored->jobDescription->title
+                            ?? $tailored->jobDescription->sourceLabel(),
+                        'company' => data_get(
+                            $tailored->jobDescription->metadata,
+                            'company'
+                        ),
+                    ])
+                    ->unique(fn ($item) => $item['job_id'])
+                    ->take(3)
+                    ->values()
+                    ->all();
+
+                return [
+                    'id' => $resume->id,
+                    'slug' => $resume->slug,
+                    'title' => $resume->title,
+                    'description' => $resume->description,
+                    'uploaded_at' => $resume->created_at?->toIso8601String(),
+                    'updated_at' => $resume->updated_at?->toIso8601String(),
+                    'last_evaluated_at' => $resume->last_evaluation_at
+                        ? Carbon::parse($resume->last_evaluation_at)->toIso8601String()
+                        : null,
+                    'evaluations_count' => $resume->evaluations_count,
+                    'tailored_count' => $resume->tailored_resumes_count,
+                    'tailored_for' => $tailoredFor,
+                ];
+            })
             ->values()
             ->all();
 
@@ -121,6 +151,7 @@ class ResumeController extends Controller
                             : $evaluation->jobDescription->source_url,
                         'source_label' => $evaluation->jobDescription->sourceLabel(),
                         'is_manual' => $evaluation->jobDescription->isManual(),
+                        'company' => data_get($evaluation->jobDescription->metadata, 'company'),
                     ],
                     'tailored_count' => $evaluation->tailored_resumes_count,
                     'created_at' => $evaluation->created_at?->toIso8601String(),
@@ -142,6 +173,7 @@ class ResumeController extends Controller
                                 : $tailored->jobDescription->source_url,
                             'source_label' => $tailored->jobDescription->sourceLabel(),
                             'is_manual' => $tailored->jobDescription->isManual(),
+                            'company' => data_get($tailored->jobDescription->metadata, 'company'),
                         ]
                         : null,
                     'evaluation_id' => $tailored->evaluation?->id,

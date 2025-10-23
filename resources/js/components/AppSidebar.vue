@@ -12,46 +12,64 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import resumes from '@/routes/resumes';
+import jobs from '@/routes/jobs';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/vue3';
-import { BookOpen, Folder, LayoutGrid } from 'lucide-vue-next';
+import { BookMarked, BriefcaseBusiness, Sparkle } from 'lucide-vue-next';
 import AppLogo from './AppLogo.vue';
 
 const mainNavItems: NavItem[] = [
     {
         title: 'Resumes',
         href: resumes.index(),
-        icon: LayoutGrid,
+        icon: BookMarked,
+    },
+    {
+        title: 'Jobs',
+        href: jobs.index(),
+        icon: BriefcaseBusiness,
     },
 ];
 
 const footerNavItems: NavItem[] = [
     {
-        title: 'Github Repo',
-        href: 'https://github.com/laravel/vue-starter-kit',
-        icon: Folder,
+        title: 'Quick Tips',
+        href: '/resources',
+        icon: Sparkle,
     },
     {
         title: 'Documentation',
         href: 'https://laravel.com/docs/starter-kits#vue',
-        icon: BookOpen,
+        icon: BookMarked,
     },
 ];
 </script>
 
 <template>
     <Sidebar collapsible="icon" variant="inset">
-        <SidebarHeader>
-            <SidebarMenu>
-                <SidebarMenuItem>
-                    <SidebarMenuButton size="lg" as-child>
-                        <Link :href="resumes.index()">
-                            <AppLogo />
-                        </Link>
-                    </SidebarMenuButton>
-                </SidebarMenuItem>
-            </SidebarMenu>
-        </SidebarHeader>
+    <SidebarHeader
+        class="gap-4 border-b border-sidebar-border/60 bg-gradient-to-br from-sidebar-background via-sidebar-background/90 to-accent/20 p-4"
+    >
+        <SidebarMenu>
+            <SidebarMenuItem>
+                <SidebarMenuButton size="lg" as-child>
+                    <Link :href="resumes.index()">
+                        <AppLogo />
+                    </Link>
+                </SidebarMenuButton>
+            </SidebarMenuItem>
+        </SidebarMenu>
+        <div
+            class="rounded-lg border border-sidebar-border/70 bg-sidebar/80 px-4 py-3 text-xs text-sidebar-foreground shadow-sm"
+        >
+            <p class="text-sm font-semibold text-sidebar-foreground">
+                Tailor smarter
+            </p>
+            <p class="mt-1 text-xs text-sidebar-foreground/70">
+                Keep your resumes, jobs, and research in one workspace.
+            </p>
+        </div>
+    </SidebarHeader>
 
         <SidebarContent>
             <NavMain :items="mainNavItems" />
