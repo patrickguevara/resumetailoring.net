@@ -464,7 +464,7 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                     v-model="evaluationForm.job_text"
                                     name="job_text"
                                     rows="8"
-                                    class="min-h-[200px] w-full rounded-lg border border-border/70 bg-background px-3 py-3 text-sm text-foreground shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+                                    class="min-h-[200px] w-full max-w-full resize-y rounded-lg border border-border/70 bg-background px-3 py-3 text-sm text-foreground shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
                                     placeholder="## About the role&#10;&#10;Paste the responsibilities and qualifications..."
                                     :aria-invalid="
                                         !!(evaluationForm.errors.job_text || globalErrors.job_text)
@@ -515,7 +515,7 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                     v-model="evaluationForm.notes"
                                     name="notes"
                                     rows="3"
-                                    class="w-full rounded-lg border border-border/70 bg-background px-3 py-3 text-sm text-foreground shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+                                    class="w-full max-w-full resize-y rounded-lg border border-border/70 bg-background px-3 py-3 text-sm text-foreground shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
                                     placeholder="Remind yourself why you ran this evaluation."
                                 />
                                 <InputError :message="evaluationForm.errors.notes" />

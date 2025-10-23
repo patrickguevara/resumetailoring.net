@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Str;
 
 class JobDescription extends Model
@@ -15,6 +16,7 @@ class JobDescription extends Model
     protected $fillable = [
         'user_id',
         'title',
+        'company',
         'source_url',
         'source_url_hash',
         'content_markdown',
@@ -47,6 +49,16 @@ class JobDescription extends Model
     public function tailoredResumes(): HasMany
     {
         return $this->hasMany(TailoredResume::class);
+    }
+
+    public function companyResearches(): HasMany
+    {
+        return $this->hasMany(CompanyResearch::class);
+    }
+
+    public function latestCompanyResearch(): HasOne
+    {
+        return $this->hasOne(CompanyResearch::class)->latestOfMany('ran_at');
     }
 
     public function isManual(): bool

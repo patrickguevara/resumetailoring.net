@@ -2,9 +2,12 @@
 
 namespace App\Services;
 
+use App\Models\AiPrompt;
 use App\Models\JobDescription;
 use App\Models\Resume;
+use App\Models\ResumeEvaluation;
 use Illuminate\Http\Client\RequestException;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
 
@@ -18,17 +21,18 @@ class ResumeIntelligenceService
     /**
      * Generate evaluation feedback comparing a resume to a job description.
      *
-     * @return array{model: string, content: string}
+     * @return array{model: string, content: string, system_prompt: string, prompt: string, prompt_log: AiPrompt}
      */
     public function evaluate(
         Resume $resume,
         JobDescription $job,
+        ResumeEvaluation $evaluation,
         ?string $jobUrlOverride = null,
         ?string $modelOverride = null
-    ): array
-    {
+    ): array {
         $jobText = $this->resolveJobDescriptionText($job, $jobUrlOverride);
         $model = $modelOverride ?: config('resume_intelligence.analysis.model');
+        $systemPrompt = config('resume_intelligence.analysis.system_prompt');
 
         $prompt = $this->buildAnalysisPrompt(
             $jobText,
@@ -36,52 +40,83 @@ class ResumeIntelligenceService
             $this->jobSourceSummary($job, $jobUrlOverride)
         );
 
+        $promptLog = $this->logPrompt(
+            $evaluation->user_id,
+            $evaluation,
+            AiPrompt::CATEGORY_EVALUATION,
+            $model,
+            $systemPrompt,
+            $prompt
+        );
+
         $payload = $this->callOpenAI(
             $model,
-            config('resume_intelligence.analysis.system_prompt'),
+            $systemPrompt,
             $prompt
         );
 
         return [
             'model' => $model,
             'content' => $payload,
+            'system_prompt' => $systemPrompt,
+            'prompt' => $prompt,
+            'prompt_log' => $promptLog,
         ];
     }
 
     /**
      * Generate a tailored resume leveraging evaluation feedback.
      *
-     * @return array{model: string, content: string}
+     * @return array{model: string, content: string, system_prompt: string, prompt: string, prompt_log: AiPrompt}
      */
-    public function tailor(Resume $resume, JobDescription $job, string $feedback): array
-    {
+    public function tailor(
+        Resume $resume,
+        JobDescription $job,
+        ResumeEvaluation $evaluation,
+        string $feedback
+    ): array {
         $jobText = $this->resolveJobDescriptionText($job);
+        $model = config('resume_intelligence.tailor.model');
+        $systemPrompt = config('resume_intelligence.tailor.system_prompt');
 
         $prompt = $this->buildTailorPrompt($jobText, $resume->content_markdown, $feedback);
 
+        $promptLog = $this->logPrompt(
+            $evaluation->user_id,
+            $evaluation,
+            AiPrompt::CATEGORY_TAILOR,
+            $model,
+            $systemPrompt,
+            $prompt
+        );
+
         $payload = $this->callOpenAI(
-            config('resume_intelligence.tailor.model'),
-            config('resume_intelligence.tailor.system_prompt'),
+            $model,
+            $systemPrompt,
             $prompt
         );
 
         return [
-            'model' => config('resume_intelligence.tailor.model'),
+            'model' => $model,
             'content' => $payload,
+            'system_prompt' => $systemPrompt,
+            'prompt' => $prompt,
+            'prompt_log' => $promptLog,
         ];
     }
 
     /**
      * Generate a company research briefing for a given job description.
      *
-     * @return array{model: string, content: string}
+     * @return array{model: string, content: string, system_prompt: string, prompt: string, prompt_log: AiPrompt}
      */
     public function researchCompany(
         JobDescription $job,
         string $companyName,
         ?string $roleTitle = null,
         ?string $focus = null,
-        ?string $modelOverride = null
+        ?string $modelOverride = null,
+        ?ResumeEvaluation $evaluation = null
     ): array {
         $jobText = $this->resolveJobDescriptionText($job);
         $model = $modelOverride ?: config('resume_intelligence.research.model');
@@ -114,15 +149,25 @@ Provide a concise research briefing covering:
 Deliver the response in markdown with clear section headings and bullet lists.
 PROMPT;
 
-        $payload = $this->callOpenAI(
+        $promptable = $evaluation ?: $job;
+
+        $promptLog = $this->logPrompt(
+            $job->user_id,
+            $promptable,
+            AiPrompt::CATEGORY_RESEARCH,
             $model,
             $systemPrompt,
             $prompt
         );
 
+        $payload = $this->callOpenAI($model, $systemPrompt, $prompt);
+
         return [
             'model' => $model,
             'content' => $payload,
+            'system_prompt' => $systemPrompt,
+            'prompt' => $prompt,
+            'prompt_log' => $promptLog,
         ];
     }
 
@@ -233,6 +278,25 @@ PROMPT;
         }
 
         return '';
+    }
+
+    private function logPrompt(
+        int $userId,
+        Model $promptable,
+        string $category,
+        string $model,
+        ?string $systemPrompt,
+        string $userPrompt
+    ): AiPrompt {
+        return AiPrompt::create([
+            'user_id' => $userId,
+            'promptable_type' => $promptable->getMorphClass(),
+            'promptable_id' => $promptable->getKey(),
+            'category' => $category,
+            'model' => $model,
+            'system_prompt' => $systemPrompt,
+            'user_prompt' => $userPrompt,
+        ]);
     }
 
     private function buildAnalysisPrompt(string $jobText, string $resumeText, string $sourceSummary): string

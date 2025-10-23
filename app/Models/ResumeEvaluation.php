@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class ResumeEvaluation extends Model
 {
@@ -50,5 +51,15 @@ class ResumeEvaluation extends Model
     public function tailoredResumes(): HasMany
     {
         return $this->hasMany(TailoredResume::class);
+    }
+
+    public function companyResearches(): HasMany
+    {
+        return $this->hasMany(CompanyResearch::class);
+    }
+
+    public function aiPrompts(): MorphMany
+    {
+        return $this->morphMany(AiPrompt::class, 'promptable');
     }
 }

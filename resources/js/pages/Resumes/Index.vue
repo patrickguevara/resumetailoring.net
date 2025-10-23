@@ -390,7 +390,7 @@ const submit = () => {
                                 v-model="form.content_markdown"
                                 name="content_markdown"
                                 rows="12"
-                                class="min-h-[240px] w-full rounded-lg border border-border/70 bg-background px-3 py-3 text-sm font-mono leading-relaxed text-foreground shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+                                class="min-h-[240px] w-full max-w-full resize-y rounded-lg border border-border/70 bg-background px-3 py-3 text-sm font-mono leading-relaxed text-foreground shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
                                 placeholder="# Summary&#10;&#10;Detail your experience..."
                                 :aria-invalid="!!form.errors.content_markdown"
                             />

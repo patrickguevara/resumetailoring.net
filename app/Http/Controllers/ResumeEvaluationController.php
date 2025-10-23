@@ -34,18 +34,13 @@ class ResumeEvaluationController extends Controller
             if ($jobInputType === 'text') {
                 $jobText = (string) $request->string('job_text')->trim();
                 $manualKey = sprintf('manual://%s', (string) Str::uuid());
-                $metadata = [];
-
-                if ($jobCompany !== '') {
-                    $metadata['company'] = $jobCompany;
-                }
 
                 $job = JobDescription::create([
                     'user_id' => $user->id,
                     'source_url' => $manualKey,
                     'title' => $jobTitle !== '' ? $jobTitle : null,
+                    'company' => $jobCompany !== '' ? $jobCompany : null,
                     'content_markdown' => $jobText,
-                    'metadata' => $metadata ?: null,
                 ]);
 
                 return [$job, null];
@@ -58,11 +53,12 @@ class ResumeEvaluationController extends Controller
                 'source_url_hash' => hash('sha256', $jobUrl),
             ]);
             $metadata = $job->metadata ?? [];
+            unset($metadata['company'], $metadata['company_research']);
 
             $job->source_url = $jobUrl;
             $job->title = $jobTitle !== '' ? $jobTitle : $job->title;
             if ($jobCompany !== '') {
-                $metadata['company'] = $jobCompany;
+                $job->company = $jobCompany;
             }
             $job->metadata = $metadata !== [] ? $metadata : null;
             $job->save();
@@ -79,7 +75,7 @@ class ResumeEvaluationController extends Controller
         ]);
 
         try {
-            $result = $intelligenceService->evaluate($resume, $job, $jobUrl, $model);
+            $result = $intelligenceService->evaluate($resume, $job, $evaluation, $jobUrl, $model);
 
             $headline = Str::of($result['content'])
                 ->before("\n")

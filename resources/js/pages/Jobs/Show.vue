@@ -14,6 +14,7 @@ import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
 import { computed, reactive, ref, watch } from 'vue';
 import {
     CalendarClock,
+    ChevronDown,
     CircleCheck,
     FileText,
     Sparkles,
@@ -33,6 +34,7 @@ interface JobDetail {
         summary?: string | null;
         last_ran_at?: string | null;
         model?: string | null;
+        focus?: string | null;
     };
 }
 
@@ -103,7 +105,7 @@ const evaluationForm = useForm({
 const researchForm = useForm({
     company: props.job.company ?? '',
     model: props.job.company_research.model ?? 'gpt-5-mini',
-    focus: '',
+    focus: props.job.company_research.focus ?? '',
 });
 
 const availableModels = [
@@ -122,6 +124,7 @@ const availableModels = [
 const tailorTitles = reactive<Record<number, string>>({});
 const tailorProcessing = reactive<Record<number, boolean>>({});
 const expandedTailored = reactive<Record<number, boolean>>({});
+const showCompanyResearch = ref(true);
 
 const activeEvaluationId = ref<number | null>(
     props.evaluations.length > 0 ? props.evaluations[0].id : null,
@@ -306,7 +309,9 @@ const globalErrors = computed(() => page.props.errors ?? {});
     <Head :title="`Job · ${job.title ?? 'Job'}`" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="space-y-8 px-6 py-8">
+        <div
+            class="mr-auto w-full max-w-6xl space-y-8 px-6 py-8 xl:max-w-7xl xl:pr-16"
+        >
             <section
                 class="rounded-2xl border border-border/60 bg-gradient-to-br from-accent/20 via-background to-background p-6 shadow-sm"
             >
@@ -370,7 +375,9 @@ const globalErrors = computed(() => page.props.errors ?? {});
                 </div>
             </section>
 
-            <div class="grid gap-8 xl:grid-cols-[minmax(0,420px),1fr]">
+            <div
+                class="grid gap-8 lg:grid-cols-[minmax(0,1fr),minmax(320px,360px)]"
+            >
                 <section class="space-y-6">
                     <div
                         class="rounded-2xl border border-border/60 bg-card/80 p-6 shadow-sm"
@@ -422,7 +429,7 @@ const globalErrors = computed(() => page.props.errors ?? {});
 
                             <div class="space-y-2">
                                 <Label>Model</Label>
-                                <div class="grid gap-2">
+                                <div class="grid gap-2 md:grid-cols-2">
                                     <button
                                         v-for="model in availableModels"
                                         :key="model.id"
@@ -486,7 +493,7 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                     v-model="evaluationForm.notes"
                                     name="notes"
                                     rows="3"
-                                    class="w-full rounded-lg border border-border/70 bg-background px-3 py-3 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+                                    class="w-full max-w-full resize-y rounded-lg border border-border/70 bg-background px-3 py-3 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
                                     placeholder="Why are you re-running this evaluation?"
                                 />
                                 <InputError :message="evaluationForm.errors.notes" />
@@ -504,218 +511,6 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                 Run evaluation
                             </Button>
                         </form>
-                    </div>
-
-                    <div
-                        class="rounded-2xl border border-border/60 bg-card/80 p-6 shadow-sm"
-                    >
-                        <header class="space-y-1">
-                            <h2 class="text-lg font-semibold text-foreground">
-                                Company research
-                            </h2>
-                            <p class="text-sm text-muted-foreground">
-                                Generate a briefing to prepare for outreach and
-                                interviews. Update the company name and focus
-                                areas as needed.
-                            </p>
-                        </header>
-
-                        <div
-                            v-if="job.company_research.summary"
-                            class="mt-4 space-y-3 rounded-xl border border-border/60 bg-background/80 p-4"
-                        >
-                            <div
-                                class="flex flex-wrap items-center justify-between gap-2"
-                            >
-                                <h3 class="text-sm font-semibold text-foreground">
-                                    Latest briefing
-                                </h3>
-                                <span class="text-xs text-muted-foreground">
-                                    {{
-                                        formatDateTime(
-                                            job.company_research.last_ran_at,
-                                        ) || '—'
-                                    }}
-                                </span>
-                            </div>
-                            <MarkdownViewer
-                                :content="job.company_research.summary"
-                            />
-                        </div>
-
-                        <form
-                            class="mt-6 flex flex-col gap-5"
-                            @submit.prevent="submitResearch"
-                        >
-                            <div class="space-y-2">
-                                <Label for="company_name">Company name</Label>
-                                <Input
-                                    id="company_name"
-                                    v-model="researchForm.company"
-                                    name="company"
-                                    type="text"
-                                    placeholder="Acme Robotics"
-                                    :aria-invalid="
-                                        !!(
-                                            researchForm.errors.company ||
-                                            globalErrors.company
-                                        )
-                                    "
-                                />
-                                <InputError
-                                    :message="
-                                        researchForm.errors.company ||
-                                        globalErrors.company
-                                    "
-                                />
-                            </div>
-
-                            <div class="space-y-2">
-                                <Label>Model</Label>
-                                <div class="grid gap-2">
-                                    <button
-                                        v-for="model in availableModels"
-                                        :key="model.id"
-                                        type="button"
-                                        :class="[
-                                            'flex flex-col gap-1 rounded-lg border px-3 py-2 text-left transition',
-                                            researchForm.model === model.id
-                                                ? 'border-primary bg-primary/10 text-foreground shadow-sm'
-                                                : 'border-border/60 bg-background/70 text-muted-foreground hover:border-primary/60 hover:bg-primary/5',
-                                        ]"
-                                        @click="researchForm.model = model.id"
-                                    >
-                                        <span class="text-sm font-medium">
-                                            {{ model.label }}
-                                        </span>
-                                        <span class="text-xs">
-                                            {{ model.helper }}
-                                        </span>
-                                    </button>
-                                </div>
-                                <InputError
-                                    :message="researchForm.errors.model"
-                                />
-                            </div>
-
-                            <div class="space-y-2">
-                                <Label for="research_focus"
-                                    >Focus areas (optional)</Label
-                                >
-                                <textarea
-                                    id="research_focus"
-                                    v-model="researchForm.focus"
-                                    name="focus"
-                                    rows="3"
-                                    class="w-full rounded-lg border border-border/70 bg-background px-3 py-3 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
-                                    placeholder="Upcoming product launch, regional market dynamics, hiring initiatives..."
-                                />
-                                <InputError :message="researchForm.errors.focus" />
-                            </div>
-
-                            <Button
-                                type="submit"
-                                :disabled="researchForm.processing"
-                                class="justify-center"
-                            >
-                                <Sparkles class="mr-2 size-4" />
-                                Run company research
-                            </Button>
-                        </form>
-                    </div>
-                </section>
-
-                <section class="space-y-6">
-                    <div
-                        class="rounded-2xl border border-border/60 bg-card/80 p-6 shadow-sm"
-                    >
-                        <header class="flex items-center justify-between gap-3">
-                            <div>
-                                <h2 class="text-lg font-semibold text-foreground">
-                                    Evaluation history
-                                </h2>
-                                <p class="text-sm text-muted-foreground">
-                                    Compare how each resume performed against
-                                    this job over time.
-                                </p>
-                            </div>
-                            <Badge
-                                class="border-border/60 bg-muted/40 text-muted-foreground"
-                            >
-                                {{ evaluations.length }} total
-                            </Badge>
-                        </header>
-
-                        <div class="mt-4 space-y-3">
-                            <template v-if="hasEvaluations">
-                                <button
-                                    v-for="evaluation in evaluations"
-                                    :key="evaluation.id"
-                                    type="button"
-                                    :class="[
-                                        'w-full rounded-xl border p-4 text-left transition',
-                                        activeEvaluationId === evaluation.id
-                                            ? 'border-primary bg-primary/10 shadow-sm'
-                                            : 'border-border/60 bg-background/70 hover:border-primary/60 hover:bg-primary/5',
-                                    ]"
-                                    @click="activeEvaluationId = evaluation.id"
-                                >
-                                    <div
-                                        class="flex flex-wrap items-start justify-between gap-3"
-                                    >
-                                        <div class="space-y-1">
-                                            <p class="text-sm font-semibold text-foreground">
-                                                {{
-                                                    evaluation.resume.title ||
-                                                    'Resume'
-                                                }}
-                                            </p>
-                                            <p
-                                                v-if="evaluation.headline"
-                                                class="text-xs text-muted-foreground"
-                                            >
-                                                {{ evaluation.headline }}
-                                            </p>
-                                        </div>
-                                        <Badge
-                                            :class="
-                                                evaluationStatusClass(
-                                                    evaluation.status,
-                                                )
-                                            "
-                                        >
-                                            {{
-                                                evaluationStatusLabel(
-                                                    evaluation.status,
-                                                )
-                                            }}
-                                        </Badge>
-                                    </div>
-                                    <div
-                                        class="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground"
-                                    >
-                                        <span>
-                                            {{ evaluation.model || '—' }}
-                                        </span>
-                                        <span>•</span>
-                                        <span>
-                                            {{
-                                                formatDateTime(
-                                                    evaluation.completed_at,
-                                                ) || 'Pending'
-                                            }}
-                                        </span>
-                                    </div>
-                                </button>
-                            </template>
-                            <div
-                                v-else
-                                class="rounded-xl border border-dashed border-border/60 bg-background/80 p-6 text-sm text-muted-foreground"
-                            >
-                                Evaluations will appear here once you compare a
-                                resume with this job.
-                            </div>
-                        </div>
                     </div>
 
                     <div
@@ -981,6 +776,238 @@ const globalErrors = computed(() => page.props.errors ?? {});
                         </div>
                     </div>
                 </section>
+
+                <aside class="space-y-6">
+                    <div
+                        class="rounded-2xl border border-border/60 bg-card/80 p-6 shadow-sm"
+                    >
+                        <header class="flex items-center justify-between gap-3">
+                            <div>
+                                <h2 class="text-lg font-semibold text-foreground">
+                                    Company research
+                                </h2>
+                                <p class="text-sm text-muted-foreground">
+                                    Generate a briefing to prepare for outreach
+                                    and interviews. Update the company name and
+                                    focus areas as needed.
+                                </p>
+                            </div>
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                class="gap-1 text-sm font-medium text-muted-foreground hover:text-foreground"
+                                :aria-expanded="showCompanyResearch"
+                                @click="showCompanyResearch = !showCompanyResearch"
+                            >
+                                <span>
+                                    {{ showCompanyResearch ? 'Hide' : 'Show' }}
+                                </span>
+                                <ChevronDown
+                                    class="size-4 transition-transform duration-200"
+                                    :class="showCompanyResearch ? 'rotate-180' : ''"
+                                />
+                            </Button>
+                        </header>
+
+                        <div v-if="showCompanyResearch" class="mt-4 space-y-6">
+                            <div
+                                v-if="job.company_research.summary"
+                                class="space-y-3 rounded-xl border border-border/60 bg-background/80 p-4"
+                            >
+                                <div
+                                    class="flex flex-wrap items-center justify-between gap-2"
+                                >
+                                    <h3 class="text-sm font-semibold text-foreground">
+                                        Latest briefing
+                                    </h3>
+                                    <span class="text-xs text-muted-foreground">
+                                        {{
+                                            formatDateTime(
+                                                job.company_research.last_ran_at,
+                                            ) || '—'
+                                        }}
+                                    </span>
+                                </div>
+                                <MarkdownViewer
+                                    :content="job.company_research.summary"
+                                />
+                            </div>
+
+                            <form
+                                class="flex flex-col gap-5"
+                                @submit.prevent="submitResearch"
+                            >
+                                <div class="space-y-2">
+                                    <Label for="company_name">Company name</Label>
+                                    <Input
+                                        id="company_name"
+                                        v-model="researchForm.company"
+                                        name="company"
+                                        type="text"
+                                        placeholder="Acme Robotics"
+                                        :aria-invalid="
+                                            !!(
+                                                researchForm.errors.company ||
+                                                globalErrors.company
+                                            )
+                                        "
+                                    />
+                                    <InputError
+                                        :message="
+                                            researchForm.errors.company ||
+                                            globalErrors.company
+                                        "
+                                    />
+                                </div>
+
+                                <div class="space-y-2">
+                                    <Label>Model</Label>
+                                    <div class="grid gap-2 md:grid-cols-2">
+                                        <button
+                                            v-for="model in availableModels"
+                                            :key="model.id"
+                                            type="button"
+                                            :class="[
+                                                'flex flex-col gap-1 rounded-lg border px-3 py-2 text-left transition',
+                                                researchForm.model === model.id
+                                                    ? 'border-primary bg-primary/10 text-foreground shadow-sm'
+                                                    : 'border-border/60 bg-background/70 text-muted-foreground hover:border-primary/60 hover:bg-primary/5',
+                                            ]"
+                                            @click="researchForm.model = model.id"
+                                        >
+                                            <span class="text-sm font-medium">
+                                                {{ model.label }}
+                                            </span>
+                                            <span class="text-xs">
+                                                {{ model.helper }}
+                                            </span>
+                                        </button>
+                                    </div>
+                                    <InputError
+                                        :message="researchForm.errors.model"
+                                    />
+                                </div>
+
+                                <div class="space-y-2">
+                                    <Label for="research_focus"
+                                        >Focus areas (optional)</Label
+                                    >
+                                    <textarea
+                                        id="research_focus"
+                                        v-model="researchForm.focus"
+                                        name="focus"
+                                        rows="3"
+                                        class="w-full max-w-full resize-y rounded-lg border border-border/70 bg-background px-3 py-3 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+                                        placeholder="Upcoming product launch, regional market dynamics, hiring initiatives..."
+                                    />
+                                    <InputError :message="researchForm.errors.focus" />
+                                </div>
+
+                                <Button
+                                    type="submit"
+                                    :disabled="researchForm.processing"
+                                    class="justify-center"
+                                >
+                                    <Sparkles class="mr-2 size-4" />
+                                    Run company research
+                                </Button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <div
+                        class="rounded-2xl border border-border/60 bg-card/80 p-6 shadow-sm"
+                    >
+                        <header class="flex items-center justify-between gap-3">
+                            <div>
+                                <h2 class="text-lg font-semibold text-foreground">
+                                    Evaluation history
+                                </h2>
+                                <p class="text-sm text-muted-foreground">
+                                    Compare how each resume performed against
+                                    this job over time.
+                                </p>
+                            </div>
+                            <Badge
+                                class="border-border/60 bg-muted/40 text-muted-foreground"
+                            >
+                                {{ evaluations.length }} total
+                            </Badge>
+                        </header>
+
+                        <div class="mt-4 space-y-3">
+                            <template v-if="hasEvaluations">
+                                <button
+                                    v-for="evaluation in evaluations"
+                                    :key="evaluation.id"
+                                    type="button"
+                                    :class="[
+                                        'w-full rounded-xl border p-4 text-left transition',
+                                        activeEvaluationId === evaluation.id
+                                            ? 'border-primary bg-primary/10 shadow-sm'
+                                            : 'border-border/60 bg-background/70 hover:border-primary/60 hover:bg-primary/5',
+                                    ]"
+                                    @click="activeEvaluationId = evaluation.id"
+                                >
+                                    <div
+                                        class="flex flex-wrap items-start justify-between gap-3"
+                                    >
+                                        <div class="space-y-1">
+                                            <p class="text-sm font-semibold text-foreground">
+                                                {{
+                                                    evaluation.resume.title ||
+                                                    'Resume'
+                                                }}
+                                            </p>
+                                            <p
+                                                v-if="evaluation.headline"
+                                                class="text-xs text-muted-foreground"
+                                            >
+                                                {{ evaluation.headline }}
+                                            </p>
+                                        </div>
+                                        <Badge
+                                            :class="
+                                                evaluationStatusClass(
+                                                    evaluation.status,
+                                                )
+                                            "
+                                        >
+                                            {{
+                                                evaluationStatusLabel(
+                                                    evaluation.status,
+                                                )
+                                            }}
+                                        </Badge>
+                                    </div>
+                                    <div
+                                        class="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground"
+                                    >
+                                        <span>
+                                            {{ evaluation.model || '—' }}
+                                        </span>
+                                        <span>•</span>
+                                        <span>
+                                            {{
+                                                formatDateTime(
+                                                    evaluation.completed_at,
+                                                ) || 'Pending'
+                                            }}
+                                        </span>
+                                    </div>
+                                </button>
+                            </template>
+                            <div
+                                v-else
+                                class="rounded-xl border border-dashed border-border/60 bg-background/80 p-6 text-sm text-muted-foreground"
+                            >
+                                Evaluations will appear here once you compare a
+                                resume with this job.
+                            </div>
+                        </div>
+                    </div>
+                </aside>
             </div>
         </div>
     </AppLayout>

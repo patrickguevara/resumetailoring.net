@@ -24,6 +24,7 @@ interface JobSummary {
     tailored_resumes_count: number;
     has_tailored_resume: boolean;
     has_company_research: boolean;
+    last_company_research_at?: string | null;
     last_evaluated_at?: string | null;
     last_tailored_at?: string | null;
     created_at?: string | null;
@@ -249,6 +250,12 @@ const extractHostname = (value?: string | null) => {
                                     <div
                                         class="mt-2 flex flex-col gap-1 text-xs text-muted-foreground"
                                     >
+                                        <span
+                                            v-if="formatDateTime(job.last_company_research_at)"
+                                        >
+                                            Research
+                                            {{ formatDateTime(job.last_company_research_at) }}
+                                        </span>
                                         <span
                                             v-if="formatDateTime(job.last_evaluated_at)"
                                         >

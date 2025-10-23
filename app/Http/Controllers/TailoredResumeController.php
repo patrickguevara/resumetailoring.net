@@ -30,7 +30,7 @@ class TailoredResumeController extends Controller
         $job = $evaluation->jobDescription;
 
         try {
-            $result = $intelligenceService->tailor($resume, $job, $evaluation->feedback_markdown);
+            $result = $intelligenceService->tailor($resume, $job, $evaluation, $evaluation->feedback_markdown);
         } catch (RuntimeException $exception) {
             return back()->withErrors([
                 'tailor' => $exception->getMessage(),

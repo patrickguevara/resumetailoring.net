@@ -17,23 +17,32 @@ class JobController extends Controller
             ->withCount(['evaluations', 'tailoredResumes'])
             ->withMax('evaluations as last_evaluation_at', 'completed_at')
             ->withMax('tailoredResumes as last_tailored_at', 'created_at')
+            ->with(['latestCompanyResearch'])
             ->latest()
             ->get()
             ->map(function (JobDescription $job) {
                 $metadata = $job->metadata ?? [];
-                $companyResearch = (array) ($metadata['company_research'] ?? []);
+                $legacyResearch = (array) ($metadata['company_research'] ?? []);
+                $latestResearch = $job->latestCompanyResearch;
+
+                $company = $job->company ?? ($metadata['company'] ?? null);
+                $hasResearchSummary = $latestResearch?->summary
+                    ?? ($legacyResearch['summary'] ?? null);
+                $lastRanAt = $latestResearch?->ran_at?->toIso8601String()
+                    ?? ($legacyResearch['last_ran_at'] ?? null);
 
                 return [
                     'id' => $job->id,
                     'title' => $job->title,
-                    'company' => $metadata['company'] ?? null,
+                    'company' => $company,
                     'source_url' => $job->isManual() ? null : $job->source_url,
                     'source_label' => $job->sourceLabel(),
                     'is_manual' => $job->isManual(),
                     'evaluations_count' => $job->evaluations_count,
                     'tailored_resumes_count' => $job->tailored_resumes_count,
                     'has_tailored_resume' => $job->tailored_resumes_count > 0,
-                    'has_company_research' => filled($companyResearch['summary'] ?? null),
+                    'has_company_research' => filled($hasResearchSummary),
+                    'last_company_research_at' => $lastRanAt,
                     'last_evaluated_at' => $job->last_evaluation_at
                         ? Carbon::parse($job->last_evaluation_at)->toIso8601String()
                         : null,
@@ -63,10 +72,28 @@ class JobController extends Controller
             'tailoredResumes' => fn ($query) => $query
                 ->with(['resume:id,title,slug'])
                 ->latest(),
+            'latestCompanyResearch',
         ]);
 
         $metadata = $job->metadata ?? [];
-        $companyResearch = (array) ($metadata['company_research'] ?? []);
+        $legacyResearch = (array) ($metadata['company_research'] ?? []);
+        $latestResearch = $job->latestCompanyResearch;
+
+        $company = $job->company ?? ($metadata['company'] ?? null);
+
+        $companyResearch = $latestResearch
+            ? [
+                'summary' => $latestResearch->summary,
+                'last_ran_at' => $latestResearch->ran_at?->toIso8601String(),
+                'model' => $latestResearch->model,
+                'focus' => $latestResearch->focus,
+            ]
+            : [
+                'summary' => $legacyResearch['summary'] ?? null,
+                'last_ran_at' => $legacyResearch['last_ran_at'] ?? null,
+                'model' => $legacyResearch['model'] ?? null,
+                'focus' => $legacyResearch['focus'] ?? null,
+            ];
 
         $resumes = $request->user()
             ->resumes()
@@ -85,18 +112,14 @@ class JobController extends Controller
             'job' => [
                 'id' => $job->id,
                 'title' => $job->title,
-                'company' => $metadata['company'] ?? null,
+                'company' => $company,
                 'source_url' => $job->isManual() ? null : $job->source_url,
                 'source_label' => $job->sourceLabel(),
                 'is_manual' => $job->isManual(),
                 'description_markdown' => $job->content_markdown,
                 'created_at' => $job->created_at?->toIso8601String(),
                 'updated_at' => $job->updated_at?->toIso8601String(),
-                'company_research' => [
-                    'summary' => $companyResearch['summary'] ?? null,
-                    'last_ran_at' => $companyResearch['last_ran_at'] ?? null,
-                    'model' => $companyResearch['model'] ?? null,
-                ],
+                'company_research' => $companyResearch,
             ],
             'evaluations' => $job->evaluations
                 ->map(fn ($evaluation) => [

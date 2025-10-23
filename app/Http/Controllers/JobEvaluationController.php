@@ -41,6 +41,7 @@ class JobEvaluationController extends Controller
             $result = $intelligenceService->evaluate(
                 $resume,
                 $job,
+                $evaluation,
                 $jobUrl,
                 $model
             );

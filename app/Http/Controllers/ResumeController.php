@@ -32,10 +32,8 @@ class ResumeController extends Controller
                         'job_id' => $tailored->jobDescription->id,
                         'job_title' => $tailored->jobDescription->title
                             ?? $tailored->jobDescription->sourceLabel(),
-                        'company' => data_get(
-                            $tailored->jobDescription->metadata,
-                            'company'
-                        ),
+                        'company' => $tailored->jobDescription->company
+                            ?? data_get($tailored->jobDescription->metadata, 'company'),
                     ])
                     ->unique(fn ($item) => $item['job_id'])
                     ->take(3)
@@ -151,7 +149,8 @@ class ResumeController extends Controller
                             : $evaluation->jobDescription->source_url,
                         'source_label' => $evaluation->jobDescription->sourceLabel(),
                         'is_manual' => $evaluation->jobDescription->isManual(),
-                        'company' => data_get($evaluation->jobDescription->metadata, 'company'),
+                        'company' => $evaluation->jobDescription->company
+                            ?? data_get($evaluation->jobDescription->metadata, 'company'),
                     ],
                     'tailored_count' => $evaluation->tailored_resumes_count,
                     'created_at' => $evaluation->created_at?->toIso8601String(),
@@ -173,7 +172,8 @@ class ResumeController extends Controller
                                 : $tailored->jobDescription->source_url,
                             'source_label' => $tailored->jobDescription->sourceLabel(),
                             'is_manual' => $tailored->jobDescription->isManual(),
-                            'company' => data_get($tailored->jobDescription->metadata, 'company'),
+                            'company' => $tailored->jobDescription->company
+                                ?? data_get($tailored->jobDescription->metadata, 'company'),
                         ]
                         : null,
                     'evaluation_id' => $tailored->evaluation?->id,
