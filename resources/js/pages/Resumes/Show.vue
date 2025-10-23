@@ -7,17 +7,19 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { userChannel } from '@/lib/realtime';
-import evaluationRoutes from '@/routes/evaluations';
 import jobsRoutes from '@/routes/jobs';
 import resumeRoutes from '@/routes/resumes';
 import type { BreadcrumbItem } from '@/types';
-import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
+import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import {
+    ArrowUpRight,
     CalendarClock,
     CircleCheck,
     FileText,
+    History,
     Loader2,
+    ScrollText,
     Sparkles,
 } from 'lucide-vue-next';
 
@@ -142,9 +144,6 @@ const availableModels = [
     },
 ];
 
-const tailorTitles = reactive<Record<number, string>>({});
-const tailorProcessing = reactive<Record<number, boolean>>({});
-const tailorErrors = reactive<Record<number, string | null>>({});
 const expandedTailored = reactive<Record<number, boolean>>({});
 
 const cloneEvaluation = (evaluation: Evaluation): Evaluation => ({
@@ -315,55 +314,6 @@ const fetchTailoredResume = async (tailoredId: number) => {
     }
 };
 
-const activeEvaluationId = ref<number | null>(
-    evaluations.value.length > 0 ? evaluations.value[0].id : null,
-);
-
-watch(
-    () => activeEvaluationId.value,
-    (evaluationId) => {
-        if (evaluationId === null) {
-            return;
-        }
-
-        const evaluation = evaluations.value.find(
-            (item) => item.id === evaluationId,
-        );
-
-        if (evaluation && !evaluation.feedback_markdown) {
-            void fetchEvaluationDetails(evaluationId);
-        }
-    },
-    { immediate: true },
-);
-
-watch(
-    () => evaluations.value.map((evaluation) => evaluation.id),
-    (evaluationIds) => {
-        evaluationIds.forEach((id) => {
-            if (tailorTitles[id] === undefined) {
-                tailorTitles[id] = '';
-            }
-
-            if (tailorProcessing[id] === undefined) {
-                tailorProcessing[id] = false;
-            }
-
-            if (tailorErrors[id] === undefined) {
-                tailorErrors[id] = null;
-            }
-        });
-
-        if (
-            activeEvaluationId.value === null ||
-            !evaluationIds.includes(activeEvaluationId.value)
-        ) {
-            activeEvaluationId.value = evaluationIds[0] ?? null;
-        }
-    },
-    { immediate: true },
-);
-
 watch(
     () => tailoredResumes.value.map((tailored) => tailored.id),
     (tailoredIds) => {
@@ -391,18 +341,10 @@ watch(
 
 const hasEvaluations = computed(() => evaluations.value.length > 0);
 const hasTailoredResumes = computed(() => tailoredResumes.value.length > 0);
-
-const activeEvaluation = computed(
-    () =>
-        evaluations.value.find(
-            (evaluation) => evaluation.id === activeEvaluationId.value,
-        ) ?? null,
-);
-
-const activeEvaluationTailored = computed(() =>
-    tailoredResumes.value.filter(
-        (tailored) => tailored.evaluation_id === activeEvaluationId.value,
-    ),
+const totalEvaluations = computed(() => evaluations.value.length);
+const totalTailoredResumes = computed(() => tailoredResumes.value.length);
+const hasResumeContent = computed(
+    () => Boolean(props.resume.content_markdown?.trim()),
 );
 
 const evaluationStatusConfig: Record<
@@ -455,37 +397,34 @@ const formatDateTime = (value?: string | null) => {
     return dateTimeFormatter.format(new Date(value));
 };
 
+const scrollToSection = (sectionId: string) => {
+    if (typeof window === 'undefined') {
+        return;
+    }
+
+    const element = document.getElementById(sectionId);
+
+    if (!element) {
+        return;
+    }
+
+    const headerOffset = 96;
+    const elementPosition =
+        element.getBoundingClientRect().top + window.scrollY;
+    const offsetPosition = Math.max(elementPosition - headerOffset, 0);
+
+    window.scrollTo({
+        top: offsetPosition,
+        behavior: 'smooth',
+    });
+};
+
 const submitEvaluation = () => {
     evaluationForm.post(
         resumeRoutes.evaluations.store.url({ resume: props.resume.slug }),
         {
             preserveScroll: true,
             onSuccess: () => evaluationForm.reset(),
-        },
-    );
-};
-
-const generateTailored = (evaluation: Evaluation | null) => {
-    if (!evaluation) {
-        return;
-    }
-
-    tailorProcessing[evaluation.id] = true;
-    tailorErrors[evaluation.id] = null;
-
-    router.post(
-        evaluationRoutes.tailor.url({ evaluation: evaluation.id }),
-        {
-            title: tailorTitles[evaluation.id] ?? '',
-        },
-        {
-            preserveScroll: true,
-            onError: () => {
-                tailorProcessing[evaluation.id] = false;
-            },
-            onSuccess: () => {
-                tailorTitles[evaluation.id] = '';
-            },
         },
     );
 };
@@ -543,27 +482,6 @@ const handleResumeEvaluationUpdated = (
         evaluations.value = [normalized, ...evaluations.value];
     }
 
-    if (tailorTitles[normalized.id] === undefined) {
-        tailorTitles[normalized.id] = '';
-    }
-
-    if (tailorProcessing[normalized.id] === undefined) {
-        tailorProcessing[normalized.id] = false;
-    }
-
-    if (tailorErrors[normalized.id] === undefined) {
-        tailorErrors[normalized.id] = null;
-    }
-
-    if (
-        activeEvaluationId.value === null ||
-        !evaluations.value.some(
-            (evaluation) => evaluation.id === activeEvaluationId.value,
-        )
-    ) {
-        activeEvaluationId.value = evaluations.value[0]?.id ?? null;
-    }
-
     if (isTruncated) {
         void fetchEvaluationDetails(normalized.id);
     }
@@ -572,20 +490,14 @@ const handleResumeEvaluationUpdated = (
 const handleTailoredResumeUpdated = (
     payload: TailoredResumeUpdatedPayload,
 ) => {
-    if (tailorProcessing[payload.evaluation_id] === undefined) {
-        tailorProcessing[payload.evaluation_id] = false;
-    }
-
-    tailorProcessing[payload.evaluation_id] = false;
-
     if (payload.status === 'failed') {
-        tailorErrors[payload.evaluation_id] =
-            payload.error_message ?? 'Unable to create tailored resume.';
+        if (payload.error_message) {
+            console.error(payload.error_message);
+        }
 
         return;
     }
 
-    tailorErrors[payload.evaluation_id] = null;
     const data = payload.tailored_resume;
 
     if (!data) {
@@ -615,7 +527,6 @@ const handleTailoredResumeUpdated = (
     }
 
     expandedTailored[normalized.id] ??= false;
-    tailorTitles[payload.evaluation_id] = '';
 
     if (data.content_is_truncated) {
         void fetchTailoredResume(normalized.id);
@@ -664,13 +575,13 @@ const globalErrors = computed(() => page.props.errors ?? {});
     <Head :title="`Resume · ${resume.title}`" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div class="space-y-8 px-6 py-8">
+        <div
+            class="mr-auto w-full max-w-5xl space-y-8 px-6 py-8 xl:max-w-6xl xl:pr-16"
+        >
             <section
-                class="rounded-2xl border border-border/60 bg-gradient-to-br from-primary/10 via-background to-background p-6 shadow-sm"
+                class="rounded-2xl border border-border/60 bg-gradient-to-br from-primary/10 via-background to-background p-6 shadow-sm lg:sticky lg:top-6 lg:z-30"
             >
-                <div
-                    class="flex flex-wrap items-start justify-between gap-4"
-                >
+                <div class="flex flex-wrap items-start justify-between gap-4">
                     <div class="space-y-2">
                         <p
                             class="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-primary"
@@ -698,34 +609,172 @@ const globalErrors = computed(() => page.props.errors ?? {});
                     </div>
                 </div>
                 <div
-                    class="mt-4 flex flex-wrap items-center gap-4 text-xs text-muted-foreground"
+                    class="mt-3 flex flex-wrap items-center gap-3 text-xs text-muted-foreground"
                 >
                     <span class="inline-flex items-center gap-1">
                         <CalendarClock class="size-3.5" />
                         Added {{ formatDate(resume.created_at) ?? '—' }}
                     </span>
-                    <span>•</span>
-                    <span>
+                    <span class="hidden text-muted-foreground sm:inline">•</span>
+                    <span class="flex items-center gap-1 text-muted-foreground">
                         Updated {{ formatDateTime(resume.updated_at) ?? '—' }}
                     </span>
-                    <span>•</span>
-                    <span>
-                        {{ evaluations.length }} evaluation{{
-                            evaluations.length === 1 ? '' : 's'
-                        }}
+                    <span class="hidden text-muted-foreground sm:inline">•</span>
+                    <span class="flex items-center gap-1 text-muted-foreground">
+                        {{ totalEvaluations }}
+                        evaluation{{ totalEvaluations === 1 ? '' : 's' }}
                     </span>
-                    <span>•</span>
-                    <span>
-                        {{ tailoredResumes.length }} tailored version{{
-                            tailoredResumes.length === 1 ? '' : 's'
+                    <span class="hidden text-muted-foreground sm:inline">•</span>
+                    <span class="flex items-center gap-1 text-muted-foreground">
+                        {{ totalTailoredResumes }}
+                        tailored version{{
+                            totalTailoredResumes === 1 ? '' : 's'
                         }}
                     </span>
                 </div>
+                <div class="mt-6 flex flex-col gap-3">
+                    <div class="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                        <button
+                            type="button"
+                            class="group flex items-center justify-between gap-4 rounded-xl border border-border/60 bg-background/60 px-4 py-3 text-left transition hover:border-primary/60 hover:bg-primary/5"
+                            @click="scrollToSection('run-evaluation')"
+                        >
+                            <div class="flex items-center gap-3">
+                                <Sparkles class="size-5 text-primary" />
+                                <div>
+                                    <p
+                                        class="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                                    >
+                                        Run evaluation
+                                    </p>
+                                    <p class="text-base font-semibold text-foreground">
+                                        {{ totalEvaluations }}
+                                        <span
+                                            class="ml-1 text-sm font-normal text-muted-foreground"
+                                        >
+                                            runs
+                                        </span>
+                                    </p>
+                                </div>
+                            </div>
+                            <ArrowUpRight
+                                class="size-4 text-muted-foreground transition group-hover:text-foreground"
+                            />
+                        </button>
+                        <button
+                            type="button"
+                            class="group flex items-center justify-between gap-4 rounded-xl border border-border/60 bg-background/60 px-4 py-3 text-left transition hover:border-primary/60 hover:bg-primary/5"
+                            @click="scrollToSection('tailored-resumes')"
+                        >
+                            <div class="flex items-center gap-3">
+                                <FileText class="size-5 text-primary" />
+                                <div>
+                                    <p
+                                        class="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                                    >
+                                        Tailored resumes
+                                    </p>
+                                    <p class="text-base font-semibold text-foreground">
+                                        {{ totalTailoredResumes }}
+                                        <span
+                                            class="ml-1 text-sm font-normal text-muted-foreground"
+                                        >
+                                            saved
+                                        </span>
+                                    </p>
+                                </div>
+                            </div>
+                            <ArrowUpRight
+                                class="size-4 text-muted-foreground transition group-hover:text-foreground"
+                            />
+                        </button>
+                        <button
+                            type="button"
+                            :class="[
+                                'group flex items-center justify-between gap-4 rounded-xl border px-4 py-3 text-left transition',
+                                hasResumeContent
+                                    ? 'border-success/50 bg-success/10 hover:border-success/60 hover:bg-success/15'
+                                    : 'border-border/60 bg-background/60 hover:border-primary/60 hover:bg-primary/5',
+                            ]"
+                            @click="scrollToSection('resume-preview')"
+                        >
+                            <div class="flex items-center gap-3">
+                                <ScrollText
+                                    class="size-5"
+                                    :class="
+                                        hasResumeContent
+                                            ? 'text-success'
+                                            : 'text-muted-foreground'
+                                    "
+                                />
+                                <div>
+                                    <p
+                                        class="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                                    >
+                                        Resume markdown
+                                    </p>
+                                    <p
+                                        class="text-base font-semibold"
+                                        :class="
+                                            hasResumeContent
+                                                ? 'text-success'
+                                                : 'text-foreground'
+                                        "
+                                    >
+                                        {{
+                                            hasResumeContent
+                                                ? 'Ready to review'
+                                                : 'Add content'
+                                        }}
+                                    </p>
+                                </div>
+                            </div>
+                            <ArrowUpRight
+                                :class="[
+                                    'size-4 transition',
+                                    hasResumeContent
+                                        ? 'text-success'
+                                        : 'text-muted-foreground group-hover:text-foreground',
+                                ]"
+                            />
+                        </button>
+                        <button
+                            type="button"
+                            class="group flex items-center justify-between gap-4 rounded-xl border border-border/60 bg-background/60 px-4 py-3 text-left transition hover:border-primary/60 hover:bg-primary/5"
+                            @click="scrollToSection('evaluation-history')"
+                        >
+                            <div class="flex items-center gap-3">
+                                <History class="size-5 text-primary" />
+                                <div>
+                                    <p
+                                        class="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                                    >
+                                        Evaluation history
+                                    </p>
+                                    <p class="text-base font-semibold text-foreground">
+                                        {{ totalEvaluations }}
+                                        <span
+                                            class="ml-1 text-sm font-normal text-muted-foreground"
+                                        >
+                                            records
+                                        </span>
+                                    </p>
+                                </div>
+                            </div>
+                            <ArrowUpRight
+                                class="size-4 text-muted-foreground transition group-hover:text-foreground"
+                            />
+                        </button>
+                    </div>
+                </div>
             </section>
 
-            <div class="grid gap-8 xl:grid-cols-[minmax(0,420px),1fr]">
-                <section class="space-y-6">
+            <div
+                class="grid gap-8 lg:grid-cols-[minmax(0,1fr),minmax(320px,360px)]"
+            >
+                <aside class="space-y-6">
                     <div
+                        id="run-evaluation"
                         class="rounded-2xl border border-border/60 bg-card/80 p-6 shadow-sm"
                     >
                         <header class="space-y-1">
@@ -925,114 +974,7 @@ const globalErrors = computed(() => page.props.errors ?? {});
                     </div>
 
                     <div
-                        class="rounded-2xl border border-border/60 bg-card/80 p-6 shadow-sm"
-                    >
-                        <header class="flex items-center justify-between gap-3">
-                            <div>
-                                <h2 class="text-lg font-semibold text-foreground">
-                                    Evaluation history
-                                </h2>
-                                <p class="text-sm text-muted-foreground">
-                                    Review prior runs and switch between them to
-                                    inspect feedback.
-                                </p>
-                            </div>
-                            <Badge
-                                class="border-border/60 bg-muted/40 text-muted-foreground"
-                            >
-                                {{ evaluations.length }} total
-                            </Badge>
-                        </header>
-
-                        <div class="mt-4 space-y-3">
-                            <template v-if="hasEvaluations">
-                                <button
-                                    v-for="evaluation in evaluations"
-                                    :key="evaluation.id"
-                                    type="button"
-                                    :class="[
-                                        'w-full rounded-xl border p-4 text-left transition',
-                                        activeEvaluationId === evaluation.id
-                                            ? 'border-primary bg-primary/10 shadow-sm'
-                                            : 'border-border/60 bg-background/70 hover:border-primary/60 hover:bg-primary/5',
-                                    ]"
-                                    @click="activeEvaluationId = evaluation.id"
-                                >
-                                    <div
-                                        class="flex flex-wrap items-start justify-between gap-3"
-                                    >
-                                        <div class="space-y-1">
-                                            <p class="text-sm font-semibold text-foreground">
-                                                {{
-                                                    evaluation.job_description.title ||
-                                                    evaluation.job_description.source_label
-                                                }}
-                                            </p>
-                                        <p
-                                                v-if="evaluation.headline"
-                                                class="text-xs text-muted-foreground"
-                                            >
-                                                {{ evaluation.headline }}
-                                            </p>
-                                            <p
-                                                v-if="evaluation.job_description.company"
-                                                class="text-xs text-muted-foreground"
-                                            >
-                                                {{ evaluation.job_description.company }}
-                                            </p>
-                                        </div>
-                                        <Badge
-                                            :class="
-                                                evaluationStatusClass(
-                                                    evaluation.status,
-                                                )
-                                            "
-                                        >
-                                            <Loader2
-                                                v-if="evaluation.status === 'pending'"
-                                                class="mr-1 size-3 animate-spin"
-                                            />
-                                            {{
-                                                evaluationStatusLabel(
-                                                    evaluation.status,
-                                                )
-                                            }}
-                                        </Badge>
-                                    </div>
-                                    <div
-                                        class="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground"
-                                    >
-                                        <span>
-                                            Model:
-                                            {{ evaluation.model || '—' }}
-                                        </span>
-                                        <span>•</span>
-                                        <span>
-                                            {{
-                                                formatDateTime(
-                                                    evaluation.completed_at,
-                                                ) || 'Pending'
-                                            }}
-                                        </span>
-                                        <span>•</span>
-                                        <span>
-                                            {{ evaluation.tailored_count }}
-                                            tailored
-                                        </span>
-                                    </div>
-                                </button>
-                            </template>
-                            <div
-                                v-else
-                                class="rounded-xl border border-dashed border-border/60 bg-background/80 p-6 text-sm text-muted-foreground"
-                            >
-                                No evaluations yet. Run your first comparison to
-                                see the timeline populate.
-                            </div>
-                        </div>
-                    </div>
-
-                    <div
+                        id="tailored-resumes"
                         class="rounded-2xl border border-border/60 bg-card/80 p-6 shadow-sm"
                     >
                         <header class="flex items-center justify-between gap-3">
@@ -1121,10 +1063,11 @@ const globalErrors = computed(() => page.props.errors ?? {});
                             </div>
                         </div>
                     </div>
-                </section>
+                </aside>
 
-                <section class="space-y-6">
+                <aside class="space-y-6">
                     <div
+                        id="resume-preview"
                         class="rounded-2xl border border-border/60 bg-card/80 p-6 shadow-sm"
                     >
                         <header class="mb-4">
@@ -1144,323 +1087,154 @@ const globalErrors = computed(() => page.props.errors ?? {});
                     </div>
 
                     <div
+                        id="evaluation-history"
                         class="rounded-2xl border border-border/60 bg-card/80 p-6 shadow-sm"
                     >
-                        <header class="flex flex-wrap items-center justify-between gap-3">
+                        <header class="flex items-center justify-between gap-3">
                             <div>
                                 <h2 class="text-lg font-semibold text-foreground">
-                                    Evaluation detail
+                                    Evaluation history
                                 </h2>
                                 <p class="text-sm text-muted-foreground">
-                                    Dive into the selected evaluation’s
-                                    feedback, notes, and tailored outputs.
+                                    Review prior runs and jump to the job record for deeper context.
                                 </p>
                             </div>
                             <Badge
-                                v-if="activeEvaluation"
-                                :class="
-                                    evaluationStatusClass(activeEvaluation.status)
-                                "
+                                class="border-border/60 bg-muted/40 text-muted-foreground"
                             >
-                                <Loader2
-                                    v-if="activeEvaluation.status === 'pending'"
-                                    class="mr-1 size-3 animate-spin"
-                                />
-                                {{
-                                    evaluationStatusLabel(
-                                        activeEvaluation.status,
-                                    )
-                                }}
+                                {{ totalEvaluations }} total
                             </Badge>
                         </header>
 
-                        <div v-if="activeEvaluation" class="mt-4 space-y-6">
-                            <div
-                                v-if="activeEvaluation.status === 'failed' && activeEvaluation.error_message"
-                                class="rounded-xl border border-error/30 bg-error/10 p-4 text-sm text-error"
-                            >
-                                {{ activeEvaluation.error_message }}
-                            </div>
-                            <div
-                                v-else-if="activeEvaluation.status === 'pending'"
-                                class="flex items-center gap-2 rounded-xl border border-warning/30 bg-warning/10 p-4 text-sm text-warning"
-                            >
-                                <Loader2 class="size-4 animate-spin" />
-                                <span>
-                                    Evaluation is running. This page will update automatically once it completes.
-                                </span>
-                            </div>
-                            <div
-                                class="rounded-xl border border-border/60 bg-background/80 p-4"
-                            >
-                                <div
-                                    class="flex flex-wrap items-start justify-between gap-3"
+                        <div class="mt-4 space-y-3">
+                            <template v-if="hasEvaluations">
+                                <template
+                                    v-for="evaluation in evaluations"
+                                    :key="evaluation.id"
                                 >
-                                    <div>
-                                        <p class="text-sm font-semibold text-foreground">
-                                            Target role
-                                        </p>
-                                        <p class="text-sm text-muted-foreground">
-                                            {{
-                                                activeEvaluation.job_description
-                                                    .title ||
-                                                activeEvaluation.job_description
-                                                    .source_label
-                                            }}
-                                        </p>
-                                        <p
-                                            v-if="activeEvaluation.job_description.company"
-                                            class="text-xs text-muted-foreground"
-                                        >
-                                            {{
-                                                activeEvaluation.job_description.company
-                                            }}
-                                        </p>
-                                    </div>
-                                    <Badge
-                                        class="border-secondary/40 bg-secondary/20 text-secondary-foreground"
-                                    >
-                                        {{ activeEvaluation.model || '—' }}
-                                    </Badge>
-                                </div>
-                                <div
-                                    class="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground"
-                                >
-                                    <template
-                                        v-if="
-                                            activeEvaluation.job_description.url
-                                        "
-                                    >
-                                        <a
-                                            :href="
-                                                activeEvaluation
-                                                    .job_description.url
-                                            "
-                                            target="_blank"
-                                            rel="noopener"
-                                            class="inline-flex items-center gap-1 text-primary underline-offset-4 hover:underline"
-                                        >
-                                            <FileText class="size-3.5" />
-                                            View posting
-                                        </a>
-                                        <span>•</span>
-                                    </template>
                                     <Link
-                                        v-if="activeEvaluation.job_description.id"
+                                        v-if="evaluation.job_description.id"
                                         :href="
                                             jobsRoutes.show({
-                                                job: activeEvaluation
-                                                    .job_description.id,
+                                                job: evaluation.job_description.id,
                                             }).url
                                         "
-                                        class="inline-flex items-center gap-1 text-primary underline-offset-4 hover:underline"
-                                    >
-                                        Inspect job record
-                                    </Link>
-                                </div>
-                            </div>
-
-                            <div
-                                v-if="activeEvaluation.notes"
-                                class="rounded-xl border border-border/60 bg-background/80 p-4"
-                            >
-                                <p class="text-xs font-semibold uppercase text-muted-foreground">
-                                    Analyst note
-                                </p>
-                                <p class="mt-2 text-sm text-foreground">
-                                    {{ activeEvaluation.notes }}
-                                </p>
-                            </div>
-
-                            <div class="space-y-3">
-                                <div
-                                    class="flex flex-wrap items-center justify-between gap-2"
-                                >
-                                    <h3 class="text-sm font-semibold text-foreground">
-                                        Feedback summary
-                                    </h3>
-                                    <span class="text-xs text-muted-foreground">
-                                        {{
-                                            formatDateTime(
-                                                activeEvaluation.completed_at,
-                                            ) || 'Pending'
-                                        }}
-                                    </span>
-                                </div>
-                                <div
-                                    class="rounded-xl border border-border/60 bg-background/80 p-4"
-                                >
-                                    <MarkdownViewer
-                                        :content="
-                                            activeEvaluation.feedback_markdown ||
-                                            '_Feedback is still processing or unavailable._'
-                                        "
-                                    />
-                                </div>
-                            </div>
-
-                            <div
-                                class="space-y-4 rounded-xl border border-border/60 bg-background/80 p-4"
-                            >
-                                <div
-                                    class="flex flex-wrap items-center justify-between gap-2"
-                                >
-                                    <h3 class="text-sm font-semibold text-foreground">
-                                        Generate tailored resume
-                                    </h3>
-                                    <Badge
-                                        class="border-border/60 bg-muted/50 text-muted-foreground"
-                                    >
-                                        {{ activeEvaluation.tailored_count }}
-                                        existing
-                                    </Badge>
-                                </div>
-                                <div class="space-y-2">
-                                    <Label
-                                        :for="`tailored-title-${activeEvaluation.id}`"
-                                    >
-                                        Title
-                                    </Label>
-                                    <Input
-                                        :id="`tailored-title-${activeEvaluation.id}`"
-                                        v-model="tailorTitles[activeEvaluation.id]"
-                                        type="text"
-                                        placeholder="Senior PM · Tailored"
-                                    />
-                                </div>
-                                <div class="flex flex-wrap items-center gap-2">
-                                    <Button
-                                        size="sm"
-                                        :disabled="
-                                            tailorProcessing[activeEvaluation.id] ||
-                                            activeEvaluation.status !== 'completed'
-                                        "
-                                        @click="generateTailored(activeEvaluation)"
-                                    >
-                                        <Loader2
-                                            v-if="tailorProcessing[activeEvaluation.id]"
-                                            class="mr-2 size-4 animate-spin"
-                                        />
-                                        <Sparkles
-                                            v-else
-                                            class="mr-2 size-4"
-                                        />
-                                        <span v-if="tailorProcessing[activeEvaluation.id]">
-                                            Generating…
-                                        </span>
-                                        <span
-                                            v-else-if="
-                                                activeEvaluation.status !== 'completed'
-                                            "
-                                        >
-                                            Available after completion
-                                        </span>
-                                        <span v-else>
-                                            Generate tailored version
-                                        </span>
-                                    </Button>
-                                    <span
-                                        v-if="
-                                            activeEvaluation.status !== 'completed' &&
-                                            !tailorProcessing[activeEvaluation.id]
-                                        "
-                                        class="text-xs text-muted-foreground"
-                                    >
-                                        Wait for completion before tailoring.
-                                    </span>
-                                    <span
-                                        v-if="tailorErrors[activeEvaluation.id]"
-                                        class="text-xs text-error"
-                                    >
-                                        {{ tailorErrors[activeEvaluation.id] }}
-                                    </span>
-                                </div>
-                            </div>
-
-                            <div class="space-y-3">
-                                <div
-                                    class="flex flex-wrap items-center justify-between gap-2"
-                                >
-                                    <h3 class="text-sm font-semibold text-foreground">
-                                        Tailored outputs from this run
-                                    </h3>
-                                    <span class="text-xs text-muted-foreground">
-                                        {{
-                                            activeEvaluationTailored.length
-                                        }}
-                                        total
-                                    </span>
-                                </div>
-
-                                <template v-if="activeEvaluationTailored.length">
-                                    <article
-                                        v-for="tailored in activeEvaluationTailored"
-                                        :key="tailored.id"
-                                        class="rounded-xl border border-border/60 bg-background/70 p-4"
+                                        class="group block rounded-xl border border-border/60 bg-background/70 p-4 text-left transition hover:border-primary/60 hover:bg-primary/5"
                                     >
                                         <div
-                                            class="flex flex-wrap items-center justify-between gap-2"
+                                            class="flex flex-wrap items-start justify-between gap-3"
                                         >
-                                            <p class="text-sm font-semibold text-foreground">
-                                                {{
-                                                    tailored.title ||
-                                                    'Tailored resume'
-                                                }}
-                                            </p>
+                                            <div class="space-y-1">
+                                                <p class="text-sm font-semibold text-foreground">
+                                                    {{
+                                                        evaluation.job_description.title ||
+                                                        evaluation.job_description.source_label
+                                                    }}
+                                                </p>
+                                                <p
+                                                    v-if="evaluation.headline"
+                                                    class="text-xs text-muted-foreground"
+                                                >
+                                                    {{ evaluation.headline }}
+                                                </p>
+                                                <p
+                                                    v-if="evaluation.job_description.company"
+                                                    class="text-xs text-muted-foreground"
+                                                >
+                                                    {{ evaluation.job_description.company }}
+                                                </p>
+                                            </div>
                                             <Badge
-                                                class="border-secondary/40 bg-secondary/20 text-secondary-foreground"
+                                                :class="
+                                                    evaluationStatusClass(
+                                                        evaluation.status,
+                                                    )
+                                                "
                                             >
-                                                {{ tailored.model || 'gpt-5-mini' }}
+                                                <Loader2
+                                                    v-if="evaluation.status === 'pending'"
+                                                    class="mr-1 size-3 animate-spin"
+                                                />
+                                                {{
+                                                    evaluationStatusLabel(
+                                                        evaluation.status,
+                                                    )
+                                                }}
                                             </Badge>
                                         </div>
-                                        <p class="mt-2 text-xs text-muted-foreground">
-                                            {{
-                                                formatDateTime(
-                                                    tailored.created_at,
-                                                ) || '—'
-                                            }}
-                                        </p>
-                                        <Button
-                                            size="sm"
-                                            variant="ghost"
-                                            class="mt-3 justify-start"
-                                            @click="toggleTailoredPreview(tailored.id)"
-                                        >
-                                            <FileText class="mr-2 size-4" />
-                                            {{
-                                                expandedTailored[tailored.id]
-                                                    ? 'Hide preview'
-                                                    : 'View preview'
-                                            }}
-                                        </Button>
                                         <div
-                                            v-if="expandedTailored[tailored.id]"
-                                            class="mt-3 rounded-lg border border-border/60 bg-background/80 p-3"
+                                            class="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground"
                                         >
-                                            <MarkdownViewer
-                                                :content="tailored.content_markdown ?? ''"
-                                            />
+                                            <span>{{ evaluation.model || '—' }}</span>
+                                            <span>•</span>
+                                            <span>
+                                                {{
+                                                    formatDateTime(
+                                                        evaluation.completed_at,
+                                                    ) || 'Pending'
+                                                }}
+                                            </span>
+                                            <span>•</span>
+                                            <span>
+                                                {{ evaluation.tailored_count }}
+                                                tailored
+                                            </span>
                                         </div>
-                                    </article>
+                                    </Link>
+                                    <div
+                                        v-else
+                                        class="rounded-xl border border-border/60 bg-background/70 p-4 text-sm text-muted-foreground"
+                                    >
+                                        <div
+                                            class="flex flex-wrap items-start justify-between gap-3"
+                                        >
+                                            <div class="space-y-1">
+                                                <p class="text-sm font-semibold text-foreground">
+                                                    {{
+                                                        evaluation.job_description.title ||
+                                                        evaluation.job_description.source_label
+                                                    }}
+                                                </p>
+                                                <p
+                                                    v-if="evaluation.job_description.company"
+                                                    class="text-xs text-muted-foreground"
+                                                >
+                                                    {{ evaluation.job_description.company }}
+                                                </p>
+                                            </div>
+                                            <Badge
+                                                :class="
+                                                    evaluationStatusClass(
+                                                        evaluation.status,
+                                                    )
+                                                "
+                                            >
+                                                <Loader2
+                                                    v-if="evaluation.status === 'pending'"
+                                                    class="mr-1 size-3 animate-spin"
+                                                />
+                                                {{
+                                                    evaluationStatusLabel(
+                                                        evaluation.status,
+                                                    )
+                                                }}
+                                            </Badge>
+                                        </div>
+                                        <p class="mt-3 text-xs text-muted-foreground">
+                                            Manual job description — no linked record yet.
+                                        </p>
+                                    </div>
                                 </template>
-                                <p
-                                    v-else
-                                    class="rounded-xl border border-dashed border-border/60 bg-background/70 p-4 text-sm text-muted-foreground"
-                                >
-                                    Generate a tailored resume to see it appear
-                                    here.
-                                </p>
+                            </template>
+                            <div
+                                v-else
+                                class="rounded-xl border border-dashed border-border/60 bg-background/80 p-6 text-sm text-muted-foreground"
+                            >
+                                No evaluations yet. Run your first comparison to populate history.
                             </div>
                         </div>
-                        <div
-                            v-else
-                            class="rounded-xl border border-dashed border-border/60 bg-background/80 p-6 text-sm text-muted-foreground"
-                        >
-                            Select an evaluation from the history panel to view
-                            its details.
-                        </div>
                     </div>
-                </section>
+                </aside>
             </div>
         </div>
     </AppLayout>

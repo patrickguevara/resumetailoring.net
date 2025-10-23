@@ -14,11 +14,14 @@ import type { BreadcrumbItem } from '@/types';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import {
+    ArrowUpRight,
     CalendarClock,
     ChevronDown,
     CircleCheck,
+    CircleDashed,
     FileText,
     Loader2,
+    ScrollText,
     Sparkles,
 } from 'lucide-vue-next';
 
@@ -517,6 +520,16 @@ const activeEvaluationTailored = computed(() =>
     ),
 );
 
+const totalTailoredResumes = computed(() => tailoredResumes.value.length);
+
+const hasCompanyResearchSummary = computed(
+    () => Boolean(jobState.value.company_research.summary),
+);
+
+const hasJobDescription = computed(
+    () => Boolean(jobState.value.description_markdown),
+);
+
 const evaluationStatusConfig: Record<
     string,
     { label: string; className: string }
@@ -565,6 +578,28 @@ const formatDateTime = (value?: string | null) => {
     }
 
     return dateTimeFormatter.format(new Date(value));
+};
+
+const scrollToSection = (sectionId: string) => {
+    if (typeof window === 'undefined') {
+        return;
+    }
+
+    const element = document.getElementById(sectionId);
+
+    if (!element) {
+        return;
+    }
+
+    const headerOffset = 96;
+    const elementPosition =
+        element.getBoundingClientRect().top + window.scrollY;
+    const offsetPosition = Math.max(elementPosition - headerOffset, 0);
+
+    window.scrollTo({
+        top: offsetPosition,
+        behavior: 'smooth',
+    });
 };
 
 const submitEvaluation = () => {
@@ -844,7 +879,7 @@ const globalErrors = computed(() => page.props.errors ?? {});
             class="mr-auto w-full max-w-6xl space-y-8 px-6 py-8 xl:max-w-7xl xl:pr-16"
         >
             <section
-                class="rounded-2xl border border-border/60 bg-gradient-to-br from-accent/20 via-background to-background p-6 shadow-sm"
+                class="rounded-2xl border border-border/60 bg-gradient-to-br from-accent/20 via-background to-background p-6 shadow-sm lg:sticky lg:top-6 lg:z-30"
             >
                 <div
                     class="flex flex-wrap items-start justify-between gap-4"
@@ -887,22 +922,165 @@ const globalErrors = computed(() => page.props.errors ?? {});
                     </div>
                 </div>
                 <div
-                    class="mt-4 flex flex-wrap items-center gap-4 text-xs text-muted-foreground"
+                    class="mt-3 flex flex-wrap items-center gap-3 text-xs text-muted-foreground"
                 >
                     <span class="inline-flex items-center gap-1">
                         <CalendarClock class="size-3.5" />
                         Added {{ formatDate(job.created_at) ?? '—' }}
                     </span>
-                    <span>•</span>
-                    <span>
+                    <span class="hidden text-muted-foreground sm:inline">•</span>
+                    <span
+                        class="flex items-center gap-1 text-muted-foreground"
+                    >
                         Updated {{ formatDateTime(job.updated_at) ?? '—' }}
                     </span>
-                    <span>•</span>
-                    <span>
+                    <span class="hidden text-muted-foreground sm:inline">•</span>
+                    <span
+                        class="flex items-center gap-1 text-muted-foreground"
+                    >
                         {{ evaluations.length }} evaluation{{
                             evaluations.length === 1 ? '' : 's'
                         }}
                     </span>
+                </div>
+                <div class="mt-6 flex flex-col gap-3">
+                    <div class="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                        <button
+                            type="button"
+                            class="group flex items-center justify-between gap-4 rounded-xl border border-border/60 bg-background/60 px-4 py-3 text-left transition hover:border-primary/60 hover:bg-primary/5"
+                            @click="scrollToSection('run-evaluation')"
+                        >
+                            <div class="flex items-center gap-3">
+                                <Sparkles class="size-5 text-primary" />
+                                <div>
+                                    <p
+                                        class="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                                    >
+                                        Evaluations
+                                    </p>
+                                    <p class="text-base font-semibold text-foreground">
+                                        {{ evaluations.length }}
+                                        <span
+                                            class="ml-1 text-sm font-normal text-muted-foreground"
+                                        >
+                                            total
+                                        </span>
+                                    </p>
+                                </div>
+                            </div>
+                            <ArrowUpRight
+                                class="size-4 text-muted-foreground transition group-hover:text-foreground"
+                            />
+                        </button>
+                        <button
+                            type="button"
+                            class="group flex items-center justify-between gap-4 rounded-xl border border-border/60 bg-background/60 px-4 py-3 text-left transition hover:border-primary/60 hover:bg-primary/5"
+                            @click="scrollToSection('evaluation-details')"
+                        >
+                            <div class="flex items-center gap-3">
+                                <FileText class="size-5 text-primary" />
+                                <div>
+                                    <p
+                                        class="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                                    >
+                                        Tailored resumes
+                                    </p>
+                                    <p class="text-base font-semibold text-foreground">
+                                        {{ totalTailoredResumes }}
+                                        <span
+                                            class="ml-1 text-sm font-normal text-muted-foreground"
+                                        >
+                                            saved
+                                        </span>
+                                    </p>
+                                </div>
+                            </div>
+                            <ArrowUpRight
+                                class="size-4 text-muted-foreground transition group-hover:text-foreground"
+                            />
+                        </button>
+                        <button
+                            type="button"
+                            :class="[
+                                'group flex items-center justify-between gap-4 rounded-xl border px-4 py-3 text-left transition',
+                                hasCompanyResearchSummary
+                                    ? 'border-success/50 bg-success/10 hover:border-success/60 hover:bg-success/15'
+                                    : 'border-border/60 bg-background/60 hover:border-primary/60 hover:bg-primary/5',
+                            ]"
+                            @click="scrollToSection('company-research')"
+                        >
+                            <div class="flex items-center gap-3">
+                                <component
+                                    :is="
+                                        hasCompanyResearchSummary
+                                            ? CircleCheck
+                                            : CircleDashed
+                                    "
+                                    class="size-5"
+                                    :class="
+                                        hasCompanyResearchSummary
+                                            ? 'text-success'
+                                            : 'text-muted-foreground'
+                                    "
+                                />
+                                <div>
+                                    <p
+                                        class="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                                    >
+                                        Company research
+                                    </p>
+                                    <p
+                                        class="text-base font-semibold"
+                                        :class="
+                                            hasCompanyResearchSummary
+                                                ? 'text-success'
+                                                : 'text-foreground'
+                                        "
+                                    >
+                                        {{
+                                            hasCompanyResearchSummary
+                                                ? 'Completed'
+                                                : 'Not started'
+                                        }}
+                                    </p>
+                                </div>
+                            </div>
+                            <ArrowUpRight
+                                :class="[
+                                    'size-4 transition',
+                                    hasCompanyResearchSummary
+                                        ? 'text-success'
+                                        : 'text-muted-foreground group-hover:text-foreground',
+                                ]"
+                            />
+                        </button>
+                        <button
+                            type="button"
+                            class="group flex items-center justify-between gap-4 rounded-xl border border-border/60 bg-background/60 px-4 py-3 text-left transition hover:border-primary/60 hover:bg-primary/5"
+                            @click="scrollToSection('job-description')"
+                        >
+                            <div class="flex items-center gap-3">
+                                <ScrollText class="size-5 text-primary" />
+                                <div>
+                                    <p
+                                        class="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                                    >
+                                        Job description
+                                    </p>
+                                    <p class="text-base font-semibold text-foreground">
+                                        {{
+                                            hasJobDescription
+                                                ? 'Ready to review'
+                                                : 'No content yet'
+                                        }}
+                                    </p>
+                                </div>
+                            </div>
+                            <ArrowUpRight
+                                class="size-4 text-muted-foreground transition group-hover:text-foreground"
+                            />
+                        </button>
+                    </div>
                 </div>
             </section>
 
@@ -911,6 +1089,7 @@ const globalErrors = computed(() => page.props.errors ?? {});
             >
                 <section class="space-y-6">
                     <div
+                        id="run-evaluation"
                         class="rounded-2xl border border-border/60 bg-card/80 p-6 shadow-sm"
                     >
                         <header class="space-y-1">
@@ -1045,6 +1224,7 @@ const globalErrors = computed(() => page.props.errors ?? {});
                     </div>
 
                     <div
+                        id="evaluation-details"
                         class="rounded-2xl border border-border/60 bg-card/80 p-6 shadow-sm"
                     >
                         <header class="flex flex-wrap items-center justify-between gap-3">
@@ -1306,6 +1486,7 @@ const globalErrors = computed(() => page.props.errors ?? {});
                     </div>
 
                     <div
+                        id="job-description"
                         class="rounded-2xl border border-border/60 bg-card/80 p-6 shadow-sm"
                     >
                         <header class="mb-4">
@@ -1329,6 +1510,7 @@ const globalErrors = computed(() => page.props.errors ?? {});
 
                 <aside class="space-y-6">
                     <div
+                        id="company-research"
                         class="rounded-2xl border border-border/60 bg-card/80 p-6 shadow-sm"
                     >
                         <header class="flex items-center justify-between gap-3">
@@ -1491,6 +1673,7 @@ const globalErrors = computed(() => page.props.errors ?? {});
                     </div>
 
                     <div
+                        id="evaluation-history"
                         class="rounded-2xl border border-border/60 bg-card/80 p-6 shadow-sm"
                     >
                         <header class="flex items-center justify-between gap-3">
