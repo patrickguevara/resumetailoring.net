@@ -5,6 +5,11 @@ namespace App\Services;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
+use DOMDocument;
+use DOMElement;
+use DOMNode;
+use DOMText;
+use DOMXPath;
 use RuntimeException;
 
 class JobDescriptionFetcher
@@ -63,10 +68,22 @@ class JobDescriptionFetcher
 
     private function cleanHtml(string $html): string
     {
-        $stripped = strip_tags($html);
-        $compressed = preg_replace('/\s+/u', ' ', $stripped ?? '') ?? '';
+        $document = $this->createDocument($html);
 
-        return trim($compressed);
+        $this->removeNoise($document);
+        $this->removeHiddenElements($document);
+
+        $root = $this->locateContentRoot($document);
+
+        if (! $root instanceof DOMNode) {
+            return '';
+        }
+
+        $markdown = $this->renderBlockChildren($root);
+
+        $markdown = preg_replace("/\n{3,}/u", "\n\n", $markdown ?? '') ?? '';
+
+        return trim($markdown);
     }
 
     /**
@@ -96,5 +113,381 @@ class JobDescriptionFetcher
             'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
             'Accept-Language' => 'en-US,en;q=0.9',
         ];
+    }
+
+    private function createDocument(string $html): DOMDocument
+    {
+        $document = new DOMDocument();
+
+        libxml_use_internal_errors(true);
+
+        $encoded = $this->prepareHtml($html);
+        $document->loadHTML($encoded, LIBXML_NOERROR | LIBXML_NOWARNING | LIBXML_NONET);
+
+        libxml_clear_errors();
+
+        return $document;
+    }
+
+    private function prepareHtml(string $html): string
+    {
+        $encoding = mb_detect_encoding($html, ['UTF-8', 'ISO-8859-1', 'Windows-1252'], true) ?: 'UTF-8';
+
+        if ($encoding !== 'UTF-8') {
+            $html = mb_convert_encoding($html, 'UTF-8', $encoding);
+        }
+
+        if (! str_contains($html, '<?xml')) {
+            return '<?xml encoding="utf-8" ?>' . $html;
+        }
+
+        return $html;
+    }
+
+    private function removeNoise(DOMDocument $document): void
+    {
+        $xpath = new DOMXPath($document);
+
+        $this->removeNodes($xpath, '//script|//style|//noscript|//template|//svg|//iframe|//canvas');
+        $this->removeNodes($xpath, '//form|//fieldset|//legend');
+        $this->removeNodes($xpath, '//input|//select|//textarea|//button|//label');
+        $this->removeNodes($xpath, '//meta|//link|//base');
+    }
+
+    private function removeHiddenElements(DOMDocument $document): void
+    {
+        $xpath = new DOMXPath($document);
+
+        $this->removeNodes($xpath, '//*[@hidden]');
+        $this->removeNodes($xpath, '//*[@aria-hidden="true"]');
+        $this->removeNodes($xpath, '//*[contains(concat(" ", normalize-space(@class), " "), " sr-only ")]');
+        $this->removeNodes($xpath, '//*[contains(concat(" ", normalize-space(@class), " "), " visually-hidden ")]');
+        $this->removeNodes($xpath, '//*[contains(concat(" ", normalize-space(@class), " "), " screen-reader-text ")]');
+        $this->removeNodes($xpath, '//*[contains(concat(" ", normalize-space(@class), " "), " hidden ")]');
+
+        foreach ($xpath->query('//*[@style]') as $node) {
+            if (! $node instanceof DOMElement) {
+                continue;
+            }
+
+            $style = strtolower($node->getAttribute('style'));
+
+            if (
+                str_contains($style, 'display:none')
+                || str_contains($style, 'visibility:hidden')
+                || str_contains($style, 'opacity:0')
+            ) {
+                $node->parentNode?->removeChild($node);
+            }
+        }
+    }
+
+    private function removeNodes(DOMXPath $xpath, string $expression): void
+    {
+        foreach ($xpath->query($expression) as $node) {
+            $node->parentNode?->removeChild($node);
+        }
+    }
+
+    private function locateContentRoot(DOMDocument $document): ?DOMNode
+    {
+        $xpath = new DOMXPath($document);
+
+        $candidates = [
+            '//main[1]',
+            '//*[@role="main"][1]',
+            '//*[@id="jobDescription" or @id="job-description"][1]',
+            '//*[contains(concat(" ", normalize-space(@class), " "), " job-description ")][1]',
+            '//article[1]',
+        ];
+
+        foreach ($candidates as $expression) {
+            $node = $xpath->query($expression)->item(0);
+
+            if ($node instanceof DOMNode) {
+                return $node;
+            }
+        }
+
+        return $document->getElementsByTagName('body')->item(0);
+    }
+
+    private function renderBlockChildren(DOMNode $node, int $listDepth = 0): string
+    {
+        $blocks = [];
+
+        foreach ($node->childNodes as $child) {
+            $block = $this->renderBlock($child, $listDepth);
+
+            if ($block !== null) {
+                $trimmed = trim($block);
+
+                if ($trimmed !== '') {
+                    $blocks[] = $trimmed;
+                }
+            }
+        }
+
+        return implode("\n\n", $blocks);
+    }
+
+    private function renderBlock(DOMNode $node, int $listDepth = 0): ?string
+    {
+        if ($node instanceof DOMText) {
+            $text = $this->normalizeInlineText($node->nodeValue);
+
+            return trim($text) === '' ? null : trim($text);
+        }
+
+        if (! $node instanceof DOMElement) {
+            return null;
+        }
+
+        $tag = strtolower($node->tagName);
+
+        return match ($tag) {
+            'h1', 'h2', 'h3', 'h4', 'h5', 'h6' => $this->renderHeading($node),
+            'p' => $this->renderParagraph($node),
+            'ul' => $this->renderList($node, $listDepth, false),
+            'ol' => $this->renderList($node, $listDepth, true),
+            'blockquote' => $this->renderBlockquote($node, $listDepth),
+            'pre' => $this->renderPreformatted($node),
+            'table' => $this->renderTable($node),
+            'hr' => '---',
+            'br' => null,
+            default => $this->renderDefaultBlock($node, $listDepth),
+        };
+    }
+
+    private function renderHeading(DOMElement $element): ?string
+    {
+        $level = (int) substr($element->tagName, 1);
+        $level = max(1, min(6, $level));
+        $content = $this->renderInlineChildren($element);
+
+        if ($content === '') {
+            return null;
+        }
+
+        return str_repeat('#', $level) . ' ' . $content;
+    }
+
+    private function renderParagraph(DOMElement $element): ?string
+    {
+        $content = $this->renderInlineChildren($element);
+
+        return $content === '' ? null : $content;
+    }
+
+    private function renderList(DOMElement $element, int $depth, bool $ordered): ?string
+    {
+        $items = [];
+        $index = 1;
+
+        foreach ($element->childNodes as $child) {
+            if (! $child instanceof DOMElement || strtolower($child->tagName) !== 'li') {
+                continue;
+            }
+
+            $item = $this->renderListItem($child, $depth, $ordered, $index);
+
+            if ($item !== null && $item !== '') {
+                $items[] = $item;
+            }
+
+            if ($ordered) {
+                $index++;
+            }
+        }
+
+        $list = implode("\n", $items);
+
+        return $list === '' ? null : $list;
+    }
+
+    private function renderListItem(DOMElement $element, int $depth, bool $ordered, int $index): ?string
+    {
+        $marker = $ordered ? sprintf('%d.', $index) : '-';
+        $indent = str_repeat('  ', $depth);
+
+        $content = $this->renderInlineChildren($element);
+        $line = $content === ''
+            ? sprintf('%s%s', $indent, $marker)
+            : sprintf('%s%s %s', $indent, $marker, $content);
+
+        $lines = [$line];
+
+        foreach ($element->childNodes as $child) {
+            if (! $child instanceof DOMElement) {
+                continue;
+            }
+
+            $childTag = strtolower($child->tagName);
+
+            if (in_array($childTag, ['ul', 'ol'], true)) {
+                $nested = $this->renderList($child, $depth + 1, $childTag === 'ol');
+
+                if ($nested !== null && $nested !== '') {
+                    $lines[] = $nested;
+                }
+            }
+        }
+
+        return implode("\n", array_filter($lines));
+    }
+
+    private function renderBlockquote(DOMElement $element, int $listDepth): ?string
+    {
+        $content = $this->renderBlockChildren($element, $listDepth);
+
+        if ($content === '') {
+            return null;
+        }
+
+        $lines = preg_split("/\r\n|\r|\n/", $content) ?: [];
+        $quoted = array_map(static fn ($line) => '> ' . ltrim($line), $lines);
+
+        return implode("\n", $quoted);
+    }
+
+    private function renderPreformatted(DOMElement $element): ?string
+    {
+        $text = '';
+
+        foreach ($element->childNodes as $child) {
+            if ($child instanceof DOMText) {
+                $text .= $child->nodeValue;
+            }
+        }
+
+        if ($text === '') {
+            return null;
+        }
+
+        $trimmed = rtrim($text, "\n");
+
+        return "```\n" . $trimmed . "\n```";
+    }
+
+    private function renderTable(DOMElement $element): ?string
+    {
+        $rows = [];
+
+        foreach ($element->getElementsByTagName('tr') as $row) {
+            $cells = [];
+
+            foreach ($row->childNodes as $cell) {
+                if ($cell instanceof DOMElement && in_array(strtolower($cell->tagName), ['th', 'td'], true)) {
+                    $cells[] = $this->renderInlineChildren($cell);
+                }
+            }
+
+            if (! empty($cells)) {
+                $rows[] = '| ' . implode(' | ', $cells) . ' |';
+            }
+        }
+
+        if (empty($rows)) {
+            return null;
+        }
+
+        $header = $rows[0];
+        $columnCount = substr_count($header, '|') - 1;
+        $separatorCells = array_fill(0, max(0, $columnCount), '---');
+        $separator = '| ' . implode(' | ', $separatorCells) . ' |';
+
+        if ($columnCount > 0) {
+            array_splice($rows, 1, 0, [$separator]);
+        }
+
+        return implode("\n", $rows);
+    }
+
+    private function renderDefaultBlock(DOMElement $element, int $listDepth): ?string
+    {
+        if ($element->hasChildNodes()) {
+            return $this->renderBlockChildren($element, $listDepth);
+        }
+
+        $content = $this->renderInlineChildren($element);
+
+        return $content === '' ? null : $content;
+    }
+
+    private function renderInlineChildren(DOMNode $node): string
+    {
+        $parts = [];
+
+        foreach ($node->childNodes as $child) {
+            $parts[] = $this->renderInline($child);
+        }
+
+        $content = implode('', $parts);
+        $content = preg_replace('/[ \t]+/u', ' ', $content ?? '') ?? '';
+        $content = preg_replace('/ *\n */u', "\n", $content) ?? '';
+        $content = preg_replace("/\n{3,}/u", "\n\n", $content) ?? '';
+
+        return trim($content);
+    }
+
+    private function renderInline(DOMNode $node): string
+    {
+        if ($node instanceof DOMText) {
+            return $this->normalizeInlineText($node->nodeValue);
+        }
+
+        if (! $node instanceof DOMElement) {
+            return '';
+        }
+
+        $tag = strtolower($node->tagName);
+
+        return match ($tag) {
+            'strong', 'b' => $this->wrapInline('**', $node),
+            'em', 'i' => $this->wrapInline('_', $node),
+            'code' => $this->wrapInline('`', $node),
+            'a' => $this->renderAnchor($node),
+            'br' => "\n",
+            'span', 'u', 'small', 'sup', 'sub' => $this->renderInlineChildren($node),
+            default => $this->renderInlineChildren($node),
+        };
+    }
+
+    private function wrapInline(string $wrapper, DOMElement $element): string
+    {
+        $content = $this->renderInlineChildren($element);
+
+        if ($content === '') {
+            return '';
+        }
+
+        return $wrapper . $content . $wrapper;
+    }
+
+    private function renderAnchor(DOMElement $element): string
+    {
+        $content = $this->renderInlineChildren($element);
+        $href = trim($element->getAttribute('href'));
+
+        if ($href === '') {
+            return $content;
+        }
+
+        if ($content === '') {
+            $content = $href;
+        }
+
+        return '[' . $content . '](' . $href . ')';
+    }
+
+    private function normalizeInlineText(?string $text): string
+    {
+        if ($text === null) {
+            return '';
+        }
+
+        $normalized = preg_replace('/\s+/u', ' ', $text) ?? '';
+
+        return $normalized;
     }
 }
