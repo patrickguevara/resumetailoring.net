@@ -67,7 +67,7 @@ interface TailoredResume {
     id: number;
     title?: string | null;
     model?: string | null;
-    content_markdown: string;
+    content_markdown?: string | null;
     evaluation_id?: number | null;
     created_at?: string | null;
     resume?: {
@@ -85,6 +85,7 @@ interface ResumeEvaluationUpdatedPayload {
         model?: string | null;
         notes?: string | null;
         feedback_markdown?: string | null;
+        feedback_is_truncated?: boolean;
         error_message?: string | null;
         completed_at?: string | null;
         created_at?: string | null;
@@ -105,7 +106,8 @@ interface TailoredResumeUpdatedPayload {
         id: number;
         title?: string | null;
         model?: string | null;
-        content_markdown: string;
+        content_markdown?: string | null;
+        content_is_truncated?: boolean;
         created_at?: string | null;
         evaluation_id?: number | null;
         job_description?: {
@@ -125,6 +127,7 @@ interface CompanyResearchUpdatedPayload {
     company?: string | null;
     company_research?: {
         summary?: string | null;
+        summary_is_truncated?: boolean;
         last_ran_at?: string | null;
         model?: string | null;
         focus?: string | null;
@@ -187,6 +190,7 @@ const cloneEvaluation = (evaluation: Evaluation): Evaluation => ({
 
 const cloneTailored = (tailored: TailoredResume): TailoredResume => ({
     ...tailored,
+    content_markdown: tailored.content_markdown ?? null,
     resume: tailored.resume
         ? {
               id: tailored.resume.id ?? null,
@@ -218,6 +222,137 @@ watch(
     },
     { deep: true },
 );
+
+const evaluationFetchInFlight = new Set<number>();
+const fetchEvaluationDetails = async (evaluationId: number) => {
+    if (evaluationFetchInFlight.has(evaluationId)) {
+        return;
+    }
+
+    evaluationFetchInFlight.add(evaluationId);
+
+    try {
+        const response = await fetch(`/evaluations/${evaluationId}`, {
+            headers: {
+                Accept: 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            credentials: 'same-origin',
+        });
+
+        if (!response.ok) {
+            return;
+        }
+
+        const data = await response.json();
+
+        const normalized: Evaluation = {
+            id: data.id,
+            status: data.status,
+            headline: data.headline ?? null,
+            model: data.model ?? null,
+            notes: data.notes ?? null,
+            feedback_markdown: data.feedback_markdown ?? null,
+            error_message: data.error_message ?? null,
+            resume: {
+                id: data.resume?.id ?? null,
+                title: data.resume?.title ?? null,
+                slug: data.resume?.slug ?? null,
+            },
+            completed_at: data.completed_at ?? null,
+            created_at: data.created_at ?? null,
+        };
+
+        const existingIndex = evaluations.value.findIndex(
+            (evaluation) => evaluation.id === normalized.id,
+        );
+
+        if (existingIndex >= 0) {
+            evaluations.value.splice(existingIndex, 1, normalized);
+        } else {
+            evaluations.value = [normalized, ...evaluations.value];
+        }
+    } catch (error) {
+        console.error('Failed to fetch evaluation details', error);
+    } finally {
+        evaluationFetchInFlight.delete(evaluationId);
+    }
+};
+
+const tailoredFetchInFlight = new Set<number>();
+const fetchTailoredResume = async (tailoredId: number) => {
+    if (tailoredFetchInFlight.has(tailoredId)) {
+        return;
+    }
+
+    tailoredFetchInFlight.add(tailoredId);
+
+    try {
+        const response = await fetch(`/tailored-resumes/${tailoredId}`, {
+            headers: {
+                Accept: 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            credentials: 'same-origin',
+        });
+
+        if (!response.ok) {
+            return;
+        }
+
+        const data = await response.json();
+
+        const normalized: TailoredResume = {
+            id: data.id,
+            title: data.title ?? null,
+            model: data.model ?? null,
+            content_markdown: data.content_markdown ?? null,
+            created_at: data.created_at ?? null,
+            evaluation_id: data.evaluation_id ?? null,
+            resume: data.resume
+                ? {
+                      id: data.resume.id ?? null,
+                      title: data.resume.title ?? null,
+                      slug: data.resume.slug ?? null,
+                  }
+                : null,
+        };
+
+        const existingIndex = tailoredResumes.value.findIndex(
+            (item) => item.id === normalized.id,
+        );
+
+        if (existingIndex >= 0) {
+            tailoredResumes.value.splice(existingIndex, 1, normalized);
+        } else {
+            tailoredResumes.value = [normalized, ...tailoredResumes.value];
+        }
+    } catch (error) {
+        console.error('Failed to fetch tailored resume', error);
+    } finally {
+        tailoredFetchInFlight.delete(tailoredId);
+    }
+};
+
+let jobReloadInFlight = false;
+const refreshJobDetails = () => {
+    if (jobReloadInFlight) {
+        return;
+    }
+
+    jobReloadInFlight = true;
+
+    router.reload({
+        only: ['job'],
+        preserveScroll: true,
+        onFinish: () => {
+            jobReloadInFlight = false;
+        },
+        onError: () => {
+            jobReloadInFlight = false;
+        },
+    });
+};
 
 const initialResumeId =
     props.resumes.length > 0 ? props.resumes[0].id : null;
@@ -295,6 +430,24 @@ const isResearchRunning = computed(
 
 const activeEvaluationId = ref<number | null>(
     evaluations.value.length > 0 ? evaluations.value[0].id : null,
+);
+
+watch(
+    () => activeEvaluationId.value,
+    (evaluationId) => {
+        if (evaluationId === null) {
+            return;
+        }
+
+        const evaluation = evaluations.value.find(
+            (item) => item.id === evaluationId,
+        );
+
+        if (evaluation && !evaluation.feedback_markdown) {
+            void fetchEvaluationDetails(evaluationId);
+        }
+    },
+    { immediate: true },
 );
 
 watch(
@@ -475,6 +628,16 @@ const generateTailored = (evaluation: Evaluation | null) => {
 
 const toggleTailoredPreview = (id: number) => {
     expandedTailored[id] = !expandedTailored[id];
+
+    if (expandedTailored[id]) {
+        const tailored = tailoredResumes.value.find(
+            (item) => item.id === id,
+        );
+
+        if (!tailored || !tailored.content_markdown) {
+            void fetchTailoredResume(id);
+        }
+    }
 };
 
 const handleResumeEvaluationUpdated = (
@@ -537,6 +700,10 @@ const handleResumeEvaluationUpdated = (
     ) {
         activeEvaluationId.value = evaluations.value[0]?.id ?? null;
     }
+
+    if (payload.evaluation.feedback_is_truncated) {
+        void fetchEvaluationDetails(normalized.id);
+    }
 };
 
 const handleTailoredResumeUpdated = (
@@ -563,11 +730,13 @@ const handleTailoredResumeUpdated = (
         return;
     }
 
+    const isTruncated = data.content_is_truncated ?? false;
+
     const normalized: TailoredResume = {
         id: data.id,
         title: data.title ?? null,
         model: data.model ?? null,
-        content_markdown: data.content_markdown,
+        content_markdown: data.content_markdown ?? null,
         created_at: data.created_at ?? null,
         evaluation_id: data.evaluation_id ?? payload.evaluation_id,
         resume: data.resume
@@ -591,6 +760,10 @@ const handleTailoredResumeUpdated = (
 
     expandedTailored[normalized.id] ??= false;
     tailorTitles[payload.evaluation_id] = '';
+
+    if (isTruncated) {
+        void fetchTailoredResume(normalized.id);
+    }
 };
 
 const handleCompanyResearchUpdated = (
@@ -616,6 +789,10 @@ const handleCompanyResearchUpdated = (
         company: payload.company ?? jobState.value.company ?? null,
         company_research: defaultCompanyResearch(payload.company_research),
     };
+
+    if (payload.company_research?.summary_is_truncated) {
+        refreshJobDetails();
+    }
 };
 
 const realtimeChannel = ref<ReturnType<typeof userChannel> | null>(null);
@@ -1105,7 +1282,7 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                             class="mt-3 rounded-lg border border-border/60 bg-background/80 p-3"
                                         >
                                             <MarkdownViewer
-                                                :content="tailored.content_markdown"
+                                                :content="tailored.content_markdown ?? ''"
                                             />
                                         </div>
                                     </article>

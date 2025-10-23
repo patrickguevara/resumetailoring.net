@@ -58,7 +58,7 @@ interface TailoredResume {
     id: number;
     title?: string | null;
     model?: string | null;
-    content_markdown: string;
+    content_markdown?: string | null;
     evaluation_id?: number | null;
     created_at?: string | null;
     job_description?: JobDescriptionSummary | null;
@@ -72,6 +72,7 @@ interface ResumeEvaluationUpdatedPayload {
         model?: string | null;
         notes?: string | null;
         feedback_markdown?: string | null;
+        feedback_is_truncated?: boolean;
         error_message?: string | null;
         completed_at?: string | null;
         created_at?: string | null;
@@ -88,7 +89,8 @@ interface TailoredResumeUpdatedPayload {
         id: number;
         title?: string | null;
         model?: string | null;
-        content_markdown: string;
+        content_markdown?: string | null;
+        content_is_truncated?: boolean;
         created_at?: string | null;
         evaluation_id?: number | null;
         job_description?: JobDescriptionSummary | null;
@@ -152,6 +154,7 @@ const cloneEvaluation = (evaluation: Evaluation): Evaluation => ({
 
 const cloneTailored = (tailored: TailoredResume): TailoredResume => ({
     ...tailored,
+    content_markdown: tailored.content_markdown ?? null,
     job_description: tailored.job_description
         ? { ...tailored.job_description }
         : null,
@@ -180,8 +183,158 @@ watch(
     { deep: true },
 );
 
+const evaluationFetchInFlight = new Set<number>();
+const fetchEvaluationDetails = async (evaluationId: number) => {
+    if (evaluationFetchInFlight.has(evaluationId)) {
+        return;
+    }
+
+    evaluationFetchInFlight.add(evaluationId);
+
+    try {
+        const response = await fetch(`/evaluations/${evaluationId}`, {
+            headers: {
+                Accept: 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            credentials: 'same-origin',
+        });
+
+        if (!response.ok) {
+            return;
+        }
+
+        const data = await response.json();
+        const existing = evaluations.value.find(
+            (evaluation) => evaluation.id === evaluationId,
+        );
+
+        const jobDescription = data.job_description
+            ? {
+                  id: data.job_description.id,
+                  title: data.job_description.title ?? null,
+                  url: data.job_description.url ?? null,
+                  source_label: data.job_description.source_label,
+                  is_manual: data.job_description.is_manual,
+                  company: data.job_description.company ?? null,
+              }
+            : existing?.job_description ?? {
+                  id: evaluationId,
+                  title: 'Job description',
+                  url: null,
+                  source_label: 'Job description',
+                  is_manual: true,
+                  company: null,
+              };
+
+        const normalized: Evaluation = {
+            id: data.id,
+            status: data.status,
+            headline: data.headline ?? null,
+            model: data.model ?? null,
+            notes: data.notes ?? null,
+            feedback_markdown: data.feedback_markdown ?? null,
+            error_message: data.error_message ?? null,
+            completed_at: data.completed_at ?? null,
+            created_at: data.created_at ?? null,
+            job_description: jobDescription,
+            tailored_count: data.tailored_count ?? existing?.tailored_count ?? 0,
+        };
+
+        const existingIndex = evaluations.value.findIndex(
+            (evaluation) => evaluation.id === normalized.id,
+        );
+
+        if (existingIndex >= 0) {
+            evaluations.value.splice(existingIndex, 1, normalized);
+        } else {
+            evaluations.value = [normalized, ...evaluations.value];
+        }
+    } catch (error) {
+        console.error('Failed to fetch evaluation details', error);
+    } finally {
+        evaluationFetchInFlight.delete(evaluationId);
+    }
+};
+
+const tailoredFetchInFlight = new Set<number>();
+const fetchTailoredResume = async (tailoredId: number) => {
+    if (tailoredFetchInFlight.has(tailoredId)) {
+        return;
+    }
+
+    tailoredFetchInFlight.add(tailoredId);
+
+    try {
+        const response = await fetch(`/tailored-resumes/${tailoredId}`, {
+            headers: {
+                Accept: 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            credentials: 'same-origin',
+        });
+
+        if (!response.ok) {
+            return;
+        }
+
+        const data = await response.json();
+
+        const normalized: TailoredResume = {
+            id: data.id,
+            title: data.title ?? null,
+            model: data.model ?? null,
+            content_markdown: data.content_markdown ?? null,
+            created_at: data.created_at ?? null,
+            evaluation_id: data.evaluation_id ?? null,
+            job_description: data.job_description
+                ? {
+                      id: data.job_description.id,
+                      title: data.job_description.title ?? null,
+                      url: data.job_description.url ?? null,
+                      source_label: data.job_description.source_label,
+                      is_manual: data.job_description.is_manual,
+                      company: data.job_description.company ?? null,
+                  }
+                : null,
+        };
+
+        const existingIndex = tailoredResumes.value.findIndex(
+            (item) => item.id === normalized.id,
+        );
+
+        if (existingIndex >= 0) {
+            tailoredResumes.value.splice(existingIndex, 1, normalized);
+        } else {
+            tailoredResumes.value = [normalized, ...tailoredResumes.value];
+        }
+    } catch (error) {
+        console.error('Failed to fetch tailored resume', error);
+    } finally {
+        tailoredFetchInFlight.delete(tailoredId);
+    }
+};
+
 const activeEvaluationId = ref<number | null>(
     evaluations.value.length > 0 ? evaluations.value[0].id : null,
+);
+
+watch(
+    () => activeEvaluationId.value,
+    (evaluationId) => {
+        if (evaluationId === null) {
+            return;
+        }
+
+        const evaluation = evaluations.value.find(
+            (item) => item.id === evaluationId,
+        );
+
+        if (evaluation && !evaluation.feedback_markdown) {
+            void fetchEvaluationDetails(evaluationId);
+        }
+    },
+    { immediate: true },
 );
 
 watch(
@@ -339,11 +492,22 @@ const generateTailored = (evaluation: Evaluation | null) => {
 
 const toggleTailoredPreview = (id: number) => {
     expandedTailored[id] = !expandedTailored[id];
+
+    if (expandedTailored[id]) {
+        const tailored = tailoredResumes.value.find(
+            (item) => item.id === id,
+        );
+
+        if (!tailored || !tailored.content_markdown) {
+            void fetchTailoredResume(id);
+        }
+    }
 };
 
 const handleResumeEvaluationUpdated = (
     payload: ResumeEvaluationUpdatedPayload,
 ) => {
+    const isTruncated = payload.evaluation.feedback_is_truncated ?? false;
     const jobDescription = payload.evaluation.job_description
         ? { ...payload.evaluation.job_description }
         : {
@@ -399,6 +563,10 @@ const handleResumeEvaluationUpdated = (
     ) {
         activeEvaluationId.value = evaluations.value[0]?.id ?? null;
     }
+
+    if (isTruncated) {
+        void fetchEvaluationDetails(normalized.id);
+    }
 };
 
 const handleTailoredResumeUpdated = (
@@ -428,7 +596,7 @@ const handleTailoredResumeUpdated = (
         id: data.id,
         title: data.title ?? null,
         model: data.model ?? null,
-        content_markdown: data.content_markdown,
+        content_markdown: data.content_markdown ?? null,
         created_at: data.created_at ?? null,
         evaluation_id: data.evaluation_id ?? payload.evaluation_id,
         job_description: data.job_description
@@ -448,6 +616,10 @@ const handleTailoredResumeUpdated = (
 
     expandedTailored[normalized.id] ??= false;
     tailorTitles[payload.evaluation_id] = '';
+
+    if (data.content_is_truncated) {
+        void fetchTailoredResume(normalized.id);
+    }
 };
 
 const realtimeChannel = ref<ReturnType<typeof userChannel> | null>(null);
@@ -1266,7 +1438,7 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                             class="mt-3 rounded-lg border border-border/60 bg-background/80 p-3"
                                         >
                                             <MarkdownViewer
-                                                :content="tailored.content_markdown"
+                                                :content="tailored.content_markdown ?? ''"
                                             />
                                         </div>
                                     </article>

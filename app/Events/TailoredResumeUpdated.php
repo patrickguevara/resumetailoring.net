@@ -8,6 +8,7 @@ use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Str;
 
 class TailoredResumeUpdated implements ShouldBroadcast
 {
@@ -44,6 +45,10 @@ class TailoredResumeUpdated implements ShouldBroadcast
 
     public function broadcastWith(): array
     {
+        [$content, $contentTruncated] = $this->truncateMarkdown(
+            $this->tailoredResume?->content_markdown
+        );
+
         return [
             'status' => $this->status,
             'evaluation_id' => $this->evaluation->id,
@@ -53,7 +58,8 @@ class TailoredResumeUpdated implements ShouldBroadcast
                     'id' => $this->tailoredResume->id,
                     'title' => $this->tailoredResume->title,
                     'model' => $this->tailoredResume->model,
-                    'content_markdown' => $this->tailoredResume->content_markdown,
+                    'content_markdown' => $content,
+                    'content_is_truncated' => $contentTruncated,
                     'created_at' => $this->tailoredResume->created_at?->toIso8601String(),
                     'evaluation_id' => $this->tailoredResume->resume_evaluation_id,
                     'job_description' => $this->tailoredResume->jobDescription
@@ -80,5 +86,18 @@ class TailoredResumeUpdated implements ShouldBroadcast
                 : null,
         ];
     }
-}
 
+    /**
+     * @return array{0: ?string, 1: bool}
+     */
+    private function truncateMarkdown(?string $content, int $limit = 6000): array
+    {
+        if ($content === null) {
+            return [null, false];
+        }
+
+        $truncated = Str::limit($content, $limit);
+
+        return [$truncated, mb_strlen($content) > $limit];
+    }
+}

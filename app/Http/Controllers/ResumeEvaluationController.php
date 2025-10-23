@@ -7,6 +7,8 @@ use App\Jobs\ProcessResumeEvaluation;
 use App\Models\JobDescription;
 use App\Models\Resume;
 use App\Models\ResumeEvaluation;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -80,6 +82,49 @@ class ResumeEvaluationController extends Controller
         return to_route('resumes.show', $resume)->with('flash', [
             'type' => 'info',
             'message' => 'Evaluation queued. We will notify you when it finishes.',
+        ]);
+    }
+
+    public function show(Request $request, ResumeEvaluation $evaluation): JsonResponse
+    {
+        abort_unless($evaluation->user_id === $request->user()->id, 404);
+
+        $evaluation->loadMissing(['resume:id,title,slug', 'jobDescription']);
+        $evaluation->loadCount('tailoredResumes');
+
+        $job = $evaluation->jobDescription;
+
+        return response()->json([
+            'id' => $evaluation->id,
+            'status' => $evaluation->status,
+            'headline' => $evaluation->headline,
+            'model' => $evaluation->model,
+            'notes' => $evaluation->notes,
+            'feedback_markdown' => $evaluation->feedback_markdown,
+            'error_message' => $evaluation->error_message,
+            'tailored_count' => $evaluation->tailored_resumes_count ?? 0,
+            'completed_at' => $evaluation->completed_at?->toIso8601String(),
+            'created_at' => $evaluation->created_at?->toIso8601String(),
+            'resume' => $evaluation->resume
+                ? [
+                    'id' => $evaluation->resume->id,
+                    'title' => $evaluation->resume->title,
+                    'slug' => $evaluation->resume->slug,
+                ]
+                : null,
+            'job_description' => $job
+                ? [
+                    'id' => $job->id,
+                    'title' => $job->title,
+                    'url' => $job->isManual() ? null : $job->source_url,
+                    'source_label' => $job->sourceLabel(),
+                    'is_manual' => $job->isManual(),
+                    'company' => $job->company ?? data_get($job->metadata, 'company'),
+                    'description_preview' => $job->content_markdown
+                        ? Str::of($job->content_markdown)->stripTags()->limit(600)->value()
+                        : null,
+                ]
+                : null,
         ]);
     }
 }

@@ -58,9 +58,20 @@ class JobDescriptionFetcher
         $body = $response->body();
 
         if (Str::contains($contentType, 'text/html')) {
-            $text = $this->cleanHtml($body);
+            $candidates = [];
+            $cleaned = $this->cleanHtml($body);
 
-            if ($text === '' || mb_strlen($text) < 200) {
+            if ($cleaned !== '') {
+                $candidates[] = $cleaned;
+            }
+
+            $structured = $this->extractJobDescriptionFromJsonLd($body);
+
+            if ($structured !== null && $structured !== '') {
+                $candidates[] = $structured;
+            }
+
+            if ($cleaned === '' || mb_strlen($cleaned) < 200) {
                 // Some sites render minimal semantic markup or rely on client-side rendering
                 // that the DOM parser cannot infer. Fall back to a plainer extraction.
                 $fallback = $this->sanitizeExtractedText(
@@ -68,9 +79,11 @@ class JobDescriptionFetcher
                 );
 
                 if ($fallback !== '') {
-                    $text = $fallback;
+                    $candidates[] = $fallback;
                 }
             }
+
+            $text = $this->chooseBestDescription($candidates);
         } else {
             $text = $this->sanitizeExtractedText(
                 $this->collapseWhitespace($body)
@@ -205,6 +218,168 @@ class JobDescriptionFetcher
         foreach ($xpath->query($expression) as $node) {
             $node->parentNode?->removeChild($node);
         }
+    }
+
+    private function extractJobDescriptionFromJsonLd(string $html): ?string
+    {
+        if (! preg_match_all(
+            '/<script[^>]*type=["\']application\/ld\+json["\'][^>]*>(.*?)<\/script>/is',
+            $html,
+            $matches
+        )) {
+            return null;
+        }
+
+        foreach ($matches[1] as $rawPayload) {
+            $payload = html_entity_decode(trim($rawPayload), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+
+            if ($payload === '') {
+                continue;
+            }
+
+            foreach ($this->decodeJsonLdPayloads($payload) as $data) {
+                $description = $this->findJobPostingDescription($data);
+
+                if (is_string($description) && $description !== '') {
+                    $markdown = $this->convertHtmlFragmentToMarkdown($description);
+
+                    if ($markdown !== '') {
+                        return $markdown;
+                    }
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param array<int, string> $candidates
+     */
+    private function chooseBestDescription(array $candidates): string
+    {
+        $best = '';
+        $bestScore = PHP_FLOAT_MIN;
+
+        foreach ($candidates as $candidate) {
+            if (! is_string($candidate)) {
+                continue;
+            }
+
+            $candidate = trim($candidate);
+
+            if ($candidate === '') {
+                continue;
+            }
+
+            $score = $this->scoreDescriptionCandidate($candidate);
+
+            if ($score > $bestScore) {
+                $best = $candidate;
+                $bestScore = $score;
+            }
+        }
+
+        return $best;
+    }
+
+    private function scoreDescriptionCandidate(string $candidate): float
+    {
+        $length = mb_strlen($candidate);
+        $lineBreaks = substr_count($candidate, "\n");
+        $listMarkers = substr_count($candidate, '- ') + substr_count($candidate, '* ');
+        $headingMarkers = substr_count($candidate, '#');
+        $linkMarkers = substr_count($candidate, '[');
+
+        return $length
+            + ($lineBreaks * 1.5)
+            + ($listMarkers * 20)
+            + ($headingMarkers * 10)
+            + ($linkMarkers * 5);
+    }
+
+    /**
+     * @return array<int, mixed>
+     */
+    private function decodeJsonLdPayloads(string $payload): array
+    {
+        $payloads = [];
+
+        try {
+            $decoded = json_decode($payload, true, 512, JSON_THROW_ON_ERROR);
+            if ($decoded !== null) {
+                $payloads[] = $decoded;
+            }
+        } catch (\JsonException) {
+            return [];
+        }
+
+        return $payloads;
+    }
+
+    /**
+     * @param mixed $data
+     */
+    private function findJobPostingDescription($data): ?string
+    {
+        if (! is_array($data)) {
+            return null;
+        }
+
+        if ($this->isJobPostingType($data) && isset($data['description']) && is_string($data['description'])) {
+            $description = trim($data['description']);
+
+            return $description === '' ? null : $description;
+        }
+
+        foreach ($data as $value) {
+            $nested = $this->findJobPostingDescription($value);
+
+            if ($nested !== null && $nested !== '') {
+                return $nested;
+            }
+        }
+
+        return null;
+    }
+
+    private function isJobPostingType(array $data): bool
+    {
+        if (! array_key_exists('@type', $data)) {
+            return false;
+        }
+
+        $type = $data['@type'];
+
+        if (is_string($type)) {
+            return strtolower($type) === 'jobposting';
+        }
+
+        if (is_array($type)) {
+            foreach ($type as $value) {
+                if (is_string($value) && strtolower($value) === 'jobposting') {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private function convertHtmlFragmentToMarkdown(string $html): string
+    {
+        $html = str_replace("\u{00A0}", ' ', $html);
+        $document = $this->createDocument('<html><body>' . $html . '</body></html>');
+        $body = $document->getElementsByTagName('body')->item(0);
+
+        if (! $body instanceof DOMNode) {
+            return '';
+        }
+
+        $markdown = $this->renderBlockChildren($body);
+        $markdown = preg_replace("/\n{3,}/u", "\n\n", $markdown ?? '') ?? '';
+
+        return trim($markdown);
     }
 
     private function locateContentRoot(DOMDocument $document): ?DOMNode

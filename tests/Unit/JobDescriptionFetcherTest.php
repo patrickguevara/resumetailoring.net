@@ -65,3 +65,45 @@ it('extracts visible job description content as markdown', function () {
     expect($markdown)->not->toContain('First name');
     expect($markdown)->not->toContain('Apply Now');
 });
+
+it('prefers structured data descriptions when visible markup is sparse', function () {
+    $html = <<<'HTML'
+    <html>
+        <body>
+            <main>
+                <h1>Senior Engineering Manager, Cards Growth</h1>
+                <p>Tilt Finance</p>
+            </main>
+            <script type="application/ld+json">
+            {
+                "@context": "https://schema.org/",
+                "@type": "JobPosting",
+                "title": "Senior Engineering Manager, Cards Growth",
+                "description": "<h1>Join the Tilt team</h1><p>At Tilt we see a side of people that traditional lenders miss.</p><h2>Why You're a Great Fit</h2><ul><li>Collaborate across teams to drive growth.</li><li>Mentor engineers and raise the bar.</li></ul>"
+            }
+            </script>
+        </body>
+    </html>
+    HTML;
+
+    Http::fake([
+        'https://example.com/json-ld-job' => Http::response($html, 200, ['Content-Type' => 'text/html; charset=UTF-8']),
+    ]);
+
+    $fetcher = new JobDescriptionFetcher();
+    $markdown = $fetcher->fetch('https://example.com/json-ld-job');
+
+    $expected = <<<'MARKDOWN'
+    # Join the Tilt team
+
+    At Tilt we see a side of people that traditional lenders miss.
+
+    ## Why You're a Great Fit
+
+    - Collaborate across teams to drive growth.
+    - Mentor engineers and raise the bar.
+    MARKDOWN;
+
+    expect($markdown)->toBe($expected);
+    expect($markdown)->not->toContain('Tilt Finance');
+});

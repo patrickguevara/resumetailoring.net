@@ -38,6 +38,9 @@ class ResumeEvaluationUpdated implements ShouldBroadcast
     public function broadcastWith(): array
     {
         $job = $this->evaluation->jobDescription;
+        [$feedback, $feedbackTruncated] = $this->truncateMarkdown(
+            $this->evaluation->feedback_markdown
+        );
 
         return [
             'evaluation' => [
@@ -46,8 +49,9 @@ class ResumeEvaluationUpdated implements ShouldBroadcast
                 'headline' => $this->evaluation->headline,
                 'model' => $this->evaluation->model,
                 'notes' => $this->evaluation->notes,
-            'feedback_markdown' => $this->truncateMarkdown($this->evaluation->feedback_markdown),
-            'error_message' => $this->evaluation->error_message,
+                'feedback_markdown' => $feedback,
+                'feedback_is_truncated' => $feedbackTruncated,
+                'error_message' => $this->evaluation->error_message,
                 'tailored_count' => $this->evaluation->tailored_resumes_count ?? 0,
                 'completed_at' => $this->evaluation->completed_at?->toIso8601String(),
                 'created_at' => $this->evaluation->created_at?->toIso8601String(),
@@ -73,13 +77,18 @@ class ResumeEvaluationUpdated implements ShouldBroadcast
         ];
     }
 
-    private function truncateMarkdown(?string $content): ?string
+    /**
+     * @return array{0: ?string, 1: bool}
+     */
+    private function truncateMarkdown(?string $content, int $limit = 6000): array
     {
         if ($content === null) {
-            return null;
+            return [null, false];
         }
 
-        return Str::limit($content, 14000);
+        $truncated = Str::limit($content, $limit);
+
+        return [$truncated, mb_strlen($content) > $limit];
     }
 
     private function descriptionPreview(?string $content): ?string

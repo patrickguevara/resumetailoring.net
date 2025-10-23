@@ -31,8 +31,12 @@ Route::middleware(['auth'])->group(function () {
 
     Route::post('resumes/{resume}/evaluations', [ResumeEvaluationController::class, 'store'])
         ->name('resumes.evaluations.store');
+    Route::get('evaluations/{evaluation}', [ResumeEvaluationController::class, 'show'])
+        ->name('evaluations.show');
     Route::post('evaluations/{evaluation}/tailor', [TailoredResumeController::class, 'store'])
         ->name('evaluations.tailor');
+    Route::get('tailored-resumes/{tailoredResume}', [TailoredResumeController::class, 'show'])
+        ->name('tailored-resumes.show');
 });
 
 require __DIR__.'/settings.php';
