@@ -317,6 +317,33 @@ const testimonials = [
                         </blockquote>
                     </div>
                 </section>
+
+                <section
+                    id="cta"
+                    class="mt-8 overflow-hidden rounded-3xl border border-[#ebeae6] bg-[#0f172a] px-8 py-12 text-white shadow-xl shadow-[#0f172a14] dark:border-[#374151] dark:bg-[#111827]"
+                >
+                    <div class="flex flex-col gap-10 lg:flex-row lg:items-center lg:justify-between">
+                        <div class="max-w-2xl space-y-4">
+                            <p class="text-xs font-semibold uppercase tracking-[0.28em] text-white/60">
+                                Try it out
+                            </p>
+                            <h2 class="text-3xl font-semibold leading-tight sm:text-4xl">
+                                Ready to tailor your next application in minutes?
+                            </h2>
+                            <p class="text-lg text-white/80">
+                                Upload a resume, drop in a job description, and let Resume Tailoring evaluate how well you match.
+                            </p>
+                        </div>
+                        <div class="flex flex-col gap-4 sm:flex-row">
+                            <Link
+                                :href="$page.props.auth.user ? dashboard() : register()"
+                                class="inline-flex items-center justify-center rounded-md bg-white px-6 py-3 text-base font-semibold text-[#0f172a] transition hover:bg-[#f3f4f6]"
+                            >
+                                {{ $page.props.auth.user ? 'Back to dashboard' : 'Start tailoring now' }}
+                            </Link>
+                        </div>
+                    </div>
+                </section>
             </main>
 
             <footer class="mt-16 border-t border-[#ebeae6] pt-8 text-xs text-[#6b6b68] dark:border-[#1f2937] dark:text-[#9ca3af]">
