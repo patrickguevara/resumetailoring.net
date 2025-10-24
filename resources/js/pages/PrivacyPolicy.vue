@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { Head, Link } from '@inertiajs/vue3';
 
+import AppLogoIcon from '@/components/AppLogoIcon.vue';
+
 const currentYear = new Date().getFullYear();
 </script>
 
@@ -10,10 +12,8 @@ const currentYear = new Date().getFullYear();
     <div class="min-h-screen bg-[#f9f7f3] px-6 py-10 text-[#1b1b18] antialiased dark:bg-[#0e1013] dark:text-[#ededec]">
         <div class="mx-auto flex w-full max-w-3xl flex-col gap-12">
             <header class="flex items-center justify-between">
-                <Link href="/" class="flex items-center gap-2 text-sm font-semibold">
-                    <span class="flex size-10 items-center justify-center rounded-md bg-[#0f172a] text-lg text-white dark:bg-[#38bdf8]/20 dark:text-[#38bdf8]">
-                        RT
-                    </span>
+                <Link href="/" class="flex items-center gap-3 text-sm font-semibold">
+                    <AppLogoIcon class="size-10" />
                     <span>Resume Tailoring</span>
                 </Link>
 

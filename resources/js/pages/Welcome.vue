@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Head, Link } from '@inertiajs/vue3';
 
+import AppLogoIcon from '@/components/AppLogoIcon.vue';
 import { dashboard, login, register } from '@/routes';
 
 const currentYear = new Date().getFullYear();
@@ -79,13 +80,9 @@ const testimonials = [
             <header class="flex items-center justify-between py-4">
                 <Link
                     :href="$page.props.auth.user ? dashboard() : register()"
-                    class="flex items-center gap-2"
+                    class="flex items-center gap-3"
                 >
-                    <span
-                        class="flex size-10 items-center justify-center rounded-md bg-[#0f172a] text-xl font-semibold text-white shadow-sm dark:bg-[#38bdf8]/20 dark:text-[#38bdf8]"
-                    >
-                        RT
-                    </span>
+                    <AppLogoIcon class="size-10" />
                     <span class="text-base font-semibold leading-tight">
                         Resume Tailoring
                     </span>
@@ -144,7 +141,7 @@ const testimonials = [
                                 :href="register()"
                                 class="inline-flex items-center justify-center gap-2 rounded-md bg-[#0f172a] px-6 py-3 text-base font-medium text-white transition hover:bg-[#0c1421] dark:bg-[#38bdf8] dark:text-[#0b1120] dark:hover:bg-[#0ea5e9]"
                             >
-                                Start free trial
+                                Try it out
                             </Link>
                             <Link
                                 v-else
@@ -264,7 +261,7 @@ const testimonials = [
                             Tailoring should feel effortless.
                         </h2>
                         <p class="text-lg text-[#545451] dark:text-[#d1d5db]">
-                            We removed the blank page, added recruiter-backed scoring, and built a workflow you can run between meetings.
+                            Gone are the days of dozens of tabs and endless context switching. Resume Tailoring streamlines the entire process into three simple steps.
                         </p>
                     </div>
 
