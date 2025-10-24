@@ -350,10 +350,10 @@ const testimonials = [
                 <div class="flex flex-col items-start justify-between gap-4 sm:flex-row">
                     <p>© {{ currentYear }} Resume Tailoring. Crafted for purposeful applicants. Site by <a href="https://samueldigitalworks.com" target="_blank">Samuel Digital Works</a>.</p>
                     <div class="flex gap-6">
-                        <Link :href="login()" class="hover:text-[#0f172a] dark:hover:text-white">
+                        <Link href="/privacy" class="hover:text-[#0f172a] dark:hover:text-white">
                             Privacy
                         </Link>
-                        <Link :href="login()" class="hover:text-[#0f172a] dark:hover:text-white">
+                        <Link href="/terms" class="hover:text-[#0f172a] dark:hover:text-white">
                             Terms
                         </Link>
                     </div>
