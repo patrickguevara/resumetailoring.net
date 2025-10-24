@@ -16,14 +16,19 @@ import resumes from '@/routes/resumes';
 import jobs from '@/routes/jobs';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/vue3';
-import { BookMarked, BriefcaseBusiness } from 'lucide-vue-next';
+import { Clipboard, BriefcaseBusiness, House, LayoutGrid } from 'lucide-vue-next';
 import AppLogo from './AppLogo.vue';
 
 const mainNavItems: NavItem[] = [
     {
+        title: 'Dashboard',
+        href: dashboard(),
+        icon: LayoutGrid,
+    },
+    {
         title: 'Resumes',
         href: resumes.index(),
-        icon: BookMarked,
+        icon: Clipboard,
     },
     {
         title: 'Jobs',
@@ -36,7 +41,7 @@ const footerNavItems: NavItem[] = [
     {
         title: 'Home Page',
         href: '/',
-        icon: BookMarked,
+        icon: House,
     },
 ];
 </script>
