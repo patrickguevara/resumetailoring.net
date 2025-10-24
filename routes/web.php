@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\JobController;
 use App\Http\Controllers\JobEvaluationController;
 use App\Http\Controllers\JobResearchController;
@@ -14,9 +15,7 @@ Route::get('/', function () {
 })->name('home');
 
 Route::middleware(['auth'])->group(function () {
-    Route::get('dashboard', function () {
-        return to_route('resumes.index');
-    })->name('dashboard');
+    Route::get('dashboard', DashboardController::class)->name('dashboard');
 
     Route::get('jobs', [JobController::class, 'index'])->name('jobs.index');
     Route::get('jobs/{job}', [JobController::class, 'show'])->name('jobs.show');

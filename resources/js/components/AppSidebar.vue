@@ -11,11 +11,12 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
+import { dashboard } from '@/routes';
 import resumes from '@/routes/resumes';
 import jobs from '@/routes/jobs';
 import { type NavItem } from '@/types';
 import { Link } from '@inertiajs/vue3';
-import { BookMarked, BriefcaseBusiness, Sparkle } from 'lucide-vue-next';
+import { BookMarked, BriefcaseBusiness } from 'lucide-vue-next';
 import AppLogo from './AppLogo.vue';
 
 const mainNavItems: NavItem[] = [
@@ -33,13 +34,8 @@ const mainNavItems: NavItem[] = [
 
 const footerNavItems: NavItem[] = [
     {
-        title: 'Quick Tips',
-        href: '/resources',
-        icon: Sparkle,
-    },
-    {
-        title: 'Documentation',
-        href: 'https://laravel.com/docs/starter-kits#vue',
+        title: 'Home Page',
+        href: '/',
         icon: BookMarked,
     },
 ];
@@ -50,10 +46,10 @@ const footerNavItems: NavItem[] = [
     <SidebarHeader
         class="gap-4 border-b border-sidebar-border/60 bg-gradient-to-br from-sidebar-background via-sidebar-background/90 to-accent/20 p-4"
     >
-        <SidebarMenu>
-            <SidebarMenuItem>
-                <SidebarMenuButton size="lg" as-child>
-                    <Link :href="resumes.index()">
+            <SidebarMenu>
+                <SidebarMenuItem>
+                    <SidebarMenuButton size="lg" as-child>
+                    <Link :href="dashboard()">
                         <AppLogo />
                     </Link>
                 </SidebarMenuButton>
