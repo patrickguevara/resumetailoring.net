@@ -200,7 +200,7 @@ return [
     'defaults' => [
         'supervisor-1' => [
             'connection' => 'redis',
-            'queue' => ['default', 'ai'],
+            'queue' => ['default', 'ai', 'resumes'],
             'balance' => 'auto',
             'autoScalingStrategy' => 'time',
             'maxProcesses' => 1,
@@ -229,4 +229,3 @@ return [
         ],
     ],
 ];
-

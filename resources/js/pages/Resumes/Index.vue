@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import InputError from '@/components/InputError.vue';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -7,7 +8,7 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import resumeRoutes from '@/routes/resumes';
 import type { BreadcrumbItem } from '@/types';
 import { Head, Link, useForm } from '@inertiajs/vue3';
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { Sparkles } from 'lucide-vue-next';
 
 interface TailoredTarget {
@@ -21,6 +22,9 @@ interface ResumeSummary {
     slug: string;
     title: string;
     description?: string | null;
+    ingestion_status: string;
+    ingestion_error?: string | null;
+    ingested_at?: string | null;
     uploaded_at?: string | null;
     updated_at?: string | null;
     last_evaluated_at?: string | null;
@@ -58,15 +62,52 @@ const breadcrumbs: BreadcrumbItem[] = [
     },
 ];
 
-const form = useForm({
-    title: '',
-    description: '',
-    content_markdown: '',
-});
+const form = useForm<{
+    title: string;
+    description: string;
+    input_type: 'markdown' | 'pdf';
+    content_markdown: string;
+    resume_file: File | null;
+}>(
+    {
+        title: '',
+        description: '',
+        input_type: 'markdown',
+        content_markdown: '',
+        resume_file: null,
+    },
+);
 
 const hasResumes = computed(() => props.resumes.length > 0);
 const hasRecentEvaluations = computed(
     () => props.recent_evaluations.length > 0,
+);
+
+const fileInput = ref<HTMLInputElement | null>(null);
+const isPdfUpload = computed(() => form.input_type === 'pdf');
+
+const handleFileChange = (event: Event) => {
+    const target = event.target as HTMLInputElement | null;
+    const file = target?.files?.[0] ?? null;
+
+    form.resume_file = file ?? null;
+};
+
+watch(
+    () => form.input_type,
+    (type) => {
+        if (type === 'markdown') {
+            form.resume_file = null;
+
+            if (fileInput.value) {
+                fileInput.value.value = '';
+            }
+        } else {
+            form.content_markdown = '';
+        }
+
+        form.clearErrors('content_markdown', 'resume_file');
+    },
 );
 
 const dateFormatter = new Intl.DateTimeFormat(undefined, {
@@ -119,11 +160,47 @@ const evaluationStatusClass = (status: string) =>
     evaluationStatusConfig[status]?.className ??
     'border-muted/60 bg-muted/40 text-muted-foreground';
 
+const resumeStatusConfig: Record<string, { label: string; className: string }> =
+    {
+        completed: {
+            label: 'Ready',
+            className: 'border-success/40 bg-success/10 text-success',
+        },
+        processing: {
+            label: 'Processing',
+            className: 'border-warning/40 bg-warning/10 text-warning',
+        },
+        failed: {
+            label: 'Failed',
+            className: 'border-error/40 bg-error/10 text-error',
+        },
+    };
+
+const resumeStatusLabel = (status: string) =>
+    resumeStatusConfig[status]?.label ?? 'Pending';
+
+const resumeStatusClass = (status: string) =>
+    resumeStatusConfig[status]?.className ??
+    'border-muted/60 bg-muted/40 text-muted-foreground';
+
 const submit = () => {
+    if (isPdfUpload.value && !form.resume_file) {
+        form.setError('resume_file', 'Please select a PDF resume to upload.');
+        return;
+    }
+
     form.post(resumeRoutes.store.url(), {
         preserveScroll: true,
+        forceFormData: isPdfUpload.value,
         onSuccess: () => {
             form.reset();
+            form.input_type = 'markdown';
+            form.resume_file = null;
+            form.clearErrors();
+
+            if (fileInput.value) {
+                fileInput.value.value = '';
+            }
         },
     });
 };
@@ -203,18 +280,20 @@ const submit = () => {
                                 >
                                     <td class="px-4 py-4 align-top">
                                         <div class="flex flex-col gap-1">
-                                            <div class="flex items-center gap-2">
+                                            <div class="flex flex-wrap items-center gap-2">
                                                 <span
                                                     class="text-sm font-semibold text-foreground"
                                                 >
                                                     {{ resume.title }}
                                                 </span>
-                                                <span
-                                                    class="inline-flex items-center gap-1 rounded-full border border-muted/60 bg-muted/30 px-2 py-0.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
+                                                <Badge
+                                                    :class="[
+                                                        'border px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide',
+                                                        resumeStatusClass(resume.ingestion_status),
+                                                    ]"
                                                 >
-                                                    {{ resume.evaluations_count }}
-                                                    eval{{ resume.evaluations_count === 1 ? '' : 's' }}
-                                                </span>
+                                                    {{ resumeStatusLabel(resume.ingestion_status) }}
+                                                </Badge>
                                             </div>
                                             <p
                                                 v-if="resume.description"
@@ -226,12 +305,49 @@ const submit = () => {
                                                 {{ resume.tailored_count }} tailored
                                                 version{{ resume.tailored_count === 1 ? '' : 's' }}
                                             </p>
+                                            <div
+                                                class="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground"
+                                            >
+                                                <span>
+                                                    {{ resume.evaluations_count }}
+                                                    evaluation{{
+                                                        resume.evaluations_count === 1 ? '' : 's'
+                                                    }}
+                                                </span>
+                                                <span v-if="resume.ingestion_status === 'processing'"
+                                                    class="hidden sm:inline"
+                                                >
+                                                    •
+                                                </span>
+                                                <span
+                                                    v-if="resume.ingestion_status === 'processing'"
+                                                    class="text-warning"
+                                                >
+                                                    Processing upload…
+                                                </span>
+                                            </div>
+                                            <p
+                                                v-if="
+                                                    resume.ingestion_status === 'failed' &&
+                                                    resume.ingestion_error
+                                                "
+                                                class="text-xs text-error"
+                                            >
+                                                {{ resume.ingestion_error }}
+                                            </p>
                                         </div>
                                     </td>
                                     <td class="px-4 py-4 align-top text-sm text-muted-foreground">
                                         <div class="flex flex-col gap-1">
                                             <span>
                                                 {{ formatDate(resume.uploaded_at) || '—' }}
+                                            </span>
+                                            <span
+                                                v-if="resume.ingested_at && resume.ingestion_status === 'completed'"
+                                                class="text-xs text-muted-foreground"
+                                            >
+                                                Converted ·
+                                                {{ formatDateTime(resume.ingested_at) || '—' }}
                                             </span>
                                             <span
                                                 v-if="formatDateTime(resume.last_evaluated_at)"
@@ -303,6 +419,7 @@ const submit = () => {
                                                 </Link>
                                             </Button>
                                             <Button
+                                                v-if="resume.ingestion_status === 'completed'"
                                                 size="sm"
                                                 variant="outline"
                                                 as-child
@@ -314,6 +431,16 @@ const submit = () => {
                                                 >
                                                     Evaluate
                                                 </Link>
+                                            </Button>
+                                            <Button
+                                                v-else
+                                                size="sm"
+                                                variant="outline"
+                                                type="button"
+                                                disabled
+                                                class="cursor-not-allowed text-muted-foreground"
+                                            >
+                                                Processing…
                                             </Button>
                                         </div>
                                     </td>
@@ -332,9 +459,9 @@ const submit = () => {
                             </span>
                         </div>
                         <p>
-                            Upload your base resume to start tailoring for
-                            roles. Use the form on the right to add your first
-                            version.
+                            Upload a PDF or paste your markdown to start
+                            tailoring for roles. Use the form on the right to
+                            add your first version.
                         </p>
                     </div>
                 </section>
@@ -347,8 +474,9 @@ const submit = () => {
                             Add a resume
                         </h2>
                         <p class="text-sm text-muted-foreground">
-                            Give it a clear name and paste your markdown resume
-                            content.
+                            Give it a clear name, then either paste your
+                            markdown or upload a PDF. We’ll normalize the
+                            content automatically.
                         </p>
                     </header>
 
@@ -384,6 +512,40 @@ const submit = () => {
                         </div>
 
                         <div class="space-y-2">
+                            <Label class="text-xs font-semibold uppercase">
+                                Resume source
+                            </Label>
+                            <div class="grid grid-cols-2 gap-2">
+                                <Button
+                                    type="button"
+                                    size="sm"
+                                    :variant="
+                                        form.input_type === 'markdown'
+                                            ? 'default'
+                                            : 'outline'
+                                    "
+                                    class="justify-center"
+                                    @click="form.input_type = 'markdown'"
+                                >
+                                    Paste markdown
+                                </Button>
+                                <Button
+                                    type="button"
+                                    size="sm"
+                                    :variant="
+                                        form.input_type === 'pdf'
+                                            ? 'default'
+                                            : 'outline'
+                                    "
+                                    class="justify-center"
+                                    @click="form.input_type = 'pdf'"
+                                >
+                                    Upload PDF
+                                </Button>
+                            </div>
+                        </div>
+
+                        <div v-if="form.input_type === 'markdown'" class="space-y-2">
                             <Label for="content_markdown">Resume markdown</Label>
                             <textarea
                                 id="content_markdown"
@@ -395,6 +557,24 @@ const submit = () => {
                                 :aria-invalid="!!form.errors.content_markdown"
                             />
                             <InputError :message="form.errors.content_markdown" />
+                        </div>
+
+                        <div v-else class="space-y-2">
+                            <Label for="resume_file">PDF resume</Label>
+                            <Input
+                                id="resume_file"
+                                ref="fileInput"
+                                name="resume_file"
+                                type="file"
+                                accept="application/pdf"
+                                :aria-invalid="!!form.errors.resume_file"
+                                @change="handleFileChange"
+                            />
+                            <p class="text-xs text-muted-foreground">
+                                Upload up to 5&nbsp;MB. We’ll convert the PDF to
+                                markdown and delete the file after processing.
+                            </p>
+                            <InputError :message="form.errors.resume_file" />
                         </div>
 
                         <Button

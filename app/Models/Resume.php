@@ -19,6 +19,13 @@ class Resume extends Model
         'slug',
         'description',
         'content_markdown',
+        'ingestion_status',
+        'ingestion_error',
+        'ingested_at',
+    ];
+
+    protected $casts = [
+        'ingested_at' => 'datetime',
     ];
 
     public function getRouteKeyName(): string

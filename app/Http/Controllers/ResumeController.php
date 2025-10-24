@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\ResumeUpdated;
 use App\Http\Requests\StoreResumeRequest;
+use App\Jobs\ProcessUploadedResume;
 use App\Models\Resume;
 use App\Models\ResumeEvaluation;
 use Illuminate\Http\Request;
@@ -45,6 +47,9 @@ class ResumeController extends Controller
                     'slug' => $resume->slug,
                     'title' => $resume->title,
                     'description' => $resume->description,
+                    'ingestion_status' => $resume->ingestion_status,
+                    'ingestion_error' => $resume->ingestion_error,
+                    'ingested_at' => $resume->ingested_at?->toIso8601String(),
                     'uploaded_at' => $resume->created_at?->toIso8601String(),
                     'updated_at' => $resume->updated_at?->toIso8601String(),
                     'last_evaluated_at' => $resume->last_evaluation_at
@@ -95,16 +100,70 @@ class ResumeController extends Controller
     {
         $user = $request->user();
 
-        $resume = $user->resumes()->create([
-            'title' => $request->string('title')->trim(),
-            'description' => $request->string('description')->trim() ?: null,
-            'content_markdown' => $request->string('content_markdown'),
-            'slug' => $this->makeSlug($request->string('title')),
-        ]);
+        $inputType = $request->string('input_type')->trim()->lower()->value() ?: 'markdown';
+        $title = $request->string('title')->trim();
+        $slug = $this->makeSlug($title);
+        $description = $request->string('description')->trim() ?: null;
+
+        if ($inputType === 'pdf') {
+            $placeholder = "*Processing uploaded resume. We'll replace this content shortly.*";
+            $resume = $user->resumes()->create([
+                'title' => $title,
+                'description' => $description,
+                'content_markdown' => $placeholder,
+                'slug' => $slug,
+                'ingestion_status' => 'processing',
+                'ingestion_error' => null,
+                'ingested_at' => null,
+            ]);
+
+            $storedPath = $request->file('resume_file')?->store(
+                sprintf('resume-uploads/%d', $user->id)
+            );
+
+            if ($storedPath === null) {
+                $resume->forceFill([
+                    'ingestion_status' => 'failed',
+                    'ingestion_error' => 'Uploaded resume file could not be stored.',
+                ])->save();
+
+                broadcast(new ResumeUpdated($resume->fresh()));
+
+                $flash = [
+                    'type' => 'error',
+                    'message' => 'We could not store the uploaded resume file.',
+                ];
+            } else {
+                ProcessUploadedResume::dispatch(
+                    resumeId: $resume->id,
+                    storedPath: $storedPath
+                );
+
+                $flash = [
+                    'type' => 'info',
+                    'message' => 'Resume upload queued. We will notify you once processing finishes.',
+                ];
+            }
+        } else {
+            $resume = $user->resumes()->create([
+                'title' => $title,
+                'description' => $description,
+                'content_markdown' => $request->string('content_markdown'),
+                'slug' => $slug,
+                'ingestion_status' => 'completed',
+                'ingestion_error' => null,
+                'ingested_at' => now(),
+            ]);
+
+            $flash = [
+                'type' => 'success',
+                'message' => 'Resume saved successfully.',
+            ];
+        }
 
         return to_route('resumes.show', $resume)->with('flash', [
-            'type' => 'success',
-            'message' => 'Resume saved successfully.',
+            'type' => $flash['type'],
+            'message' => $flash['message'],
         ]);
     }
 
@@ -129,6 +188,9 @@ class ResumeController extends Controller
                 'title' => $resume->title,
                 'description' => $resume->description,
                 'content_markdown' => $resume->content_markdown,
+                'ingestion_status' => $resume->ingestion_status,
+                'ingestion_error' => $resume->ingestion_error,
+                'ingested_at' => $resume->ingested_at?->toIso8601String(),
                 'created_at' => $resume->created_at?->toIso8601String(),
                 'updated_at' => $resume->updated_at?->toIso8601String(),
             ],

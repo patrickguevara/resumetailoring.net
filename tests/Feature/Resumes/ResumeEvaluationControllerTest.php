@@ -2,12 +2,14 @@
 
 namespace Tests\Feature\Resumes;
 
+use App\Events\ResumeEvaluationUpdated;
 use App\Models\JobDescription;
 use App\Models\Resume;
 use App\Models\ResumeEvaluation;
 use App\Models\User;
 use App\Services\ResumeIntelligenceService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Event;
 use Mockery;
 use Illuminate\Support\Str;
 use Tests\TestCase;
@@ -40,11 +42,18 @@ class ResumeEvaluationControllerTest extends TestCase
         $service = Mockery::mock(ResumeIntelligenceService::class);
         $service->shouldReceive('evaluate')
             ->once()
-            ->withArgs(function (Resume $passedResume, JobDescription $job, $jobUrlOverride) use ($resume, $manualText) {
+            ->withArgs(function (
+                Resume $passedResume,
+                JobDescription $job,
+                ResumeEvaluation $evaluation,
+                $jobUrlOverride,
+                $modelOverride
+            ) use ($resume, $manualText) {
                 $this->assertTrue($passedResume->is($resume));
                 $this->assertTrue($job->isManual());
                 $this->assertSame($manualText, $job->content_markdown);
                 $this->assertNull($jobUrlOverride);
+                $this->assertSame('gpt-5-nano', $modelOverride);
 
                 return true;
             })
@@ -55,17 +64,22 @@ class ResumeEvaluationControllerTest extends TestCase
 
         $this->app->instance(ResumeIntelligenceService::class, $service);
 
+        Event::fake([ResumeEvaluationUpdated::class]);
+
         $response = $this->actingAs($user)->post(
             route('resumes.evaluations.store', $resume),
             [
                 'job_input_type' => 'text',
                 'job_text' => $manualText,
                 'job_title' => 'Platform Engineer',
+                'model' => 'gpt-5-nano',
                 'notes' => 'Focus on backend experience.',
             ]
         );
 
         $response->assertRedirect(route('resumes.show', $resume));
+
+        Event::assertDispatched(ResumeEvaluationUpdated::class);
 
         $job = JobDescription::first();
         $this->assertNotNull($job);

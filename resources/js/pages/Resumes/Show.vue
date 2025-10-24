@@ -13,6 +13,7 @@ import type { BreadcrumbItem } from '@/types';
 import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import {
+    AlertTriangle,
     ArrowUpRight,
     CalendarClock,
     CircleCheck,
@@ -29,6 +30,9 @@ interface ResumeDetail {
     title: string;
     description?: string | null;
     content_markdown: string;
+    ingestion_status: string;
+    ingestion_error?: string | null;
+    ingested_at?: string | null;
     created_at?: string | null;
     updated_at?: string | null;
 }
@@ -99,6 +103,20 @@ interface TailoredResumeUpdatedPayload {
     } | null;
 }
 
+interface TailoredTargetSummary {
+    job_id: number;
+    job_title?: string | null;
+    company?: string | null;
+}
+
+interface ResumeUpdatedPayload {
+    resume: ResumeDetail & {
+        evaluations_count?: number;
+        tailored_count?: number;
+        tailored_for?: TailoredTargetSummary[];
+    };
+}
+
 const props = defineProps<{
     resume: ResumeDetail;
     evaluations: Evaluation[];
@@ -143,6 +161,24 @@ const availableModels = [
         helper: 'Deeper analysis for critical roles',
     },
 ];
+
+const cloneResume = (value: ResumeDetail): ResumeDetail => ({
+    ...value,
+    description: value.description ?? null,
+    ingestion_error: value.ingestion_error ?? null,
+    ingested_at: value.ingested_at ?? null,
+});
+
+const resumeState = ref<ResumeDetail>(cloneResume(props.resume));
+const resume = resumeState;
+
+watch(
+    () => props.resume,
+    (value) => {
+        resume.value = cloneResume(value);
+    },
+    { deep: true },
+);
 
 const expandedTailored = reactive<Record<number, boolean>>({});
 
@@ -344,8 +380,57 @@ const hasTailoredResumes = computed(() => tailoredResumes.value.length > 0);
 const totalEvaluations = computed(() => evaluations.value.length);
 const totalTailoredResumes = computed(() => tailoredResumes.value.length);
 const hasResumeContent = computed(
-    () => Boolean(props.resume.content_markdown?.trim()),
+    () =>
+        resume.value.ingestion_status === 'completed' &&
+        Boolean(resume.value.content_markdown?.trim()),
 );
+const isResumeProcessing = computed(
+    () => resume.value.ingestion_status === 'processing',
+);
+const resumeProcessingFailed = computed(
+    () => resume.value.ingestion_status === 'failed',
+);
+const ingestionErrorMessage = computed(
+    () => resume.value.ingestion_error ?? null,
+);
+const canRunEvaluation = computed(
+    () => resume.value.ingestion_status === 'completed',
+);
+const ingestionStatusLabel = computed(() => {
+    switch (resume.value.ingestion_status) {
+        case 'processing':
+            return 'Processing upload';
+        case 'failed':
+            return 'Processing failed';
+        default:
+            return 'Ready';
+    }
+});
+const ingestionStatusBadgeClass = computed(() => {
+    if (resumeProcessingFailed.value) {
+        return 'border-error/40 bg-error/10 text-error';
+    }
+
+    if (isResumeProcessing.value) {
+        return 'border-warning/40 bg-warning/10 text-warning';
+    }
+
+    return 'border-success/40 bg-success/10 text-success';
+});
+const evaluationDisabledMessage = computed(() => {
+    if (isResumeProcessing.value) {
+        return 'Resume upload is still being processed. Hold tight for the final markdown.';
+    }
+
+    if (resumeProcessingFailed.value) {
+        return (
+            ingestionErrorMessage.value ??
+            'Resume processing failed. Upload a new file or contact support.'
+        );
+    }
+
+    return null;
+});
 
 const evaluationStatusConfig: Record<
     string,
@@ -420,8 +505,12 @@ const scrollToSection = (sectionId: string) => {
 };
 
 const submitEvaluation = () => {
+    if (!canRunEvaluation.value) {
+        return;
+    }
+
     evaluationForm.post(
-        resumeRoutes.evaluations.store.url({ resume: props.resume.slug }),
+        resumeRoutes.evaluations.store.url({ resume: resume.value.slug }),
         {
             preserveScroll: true,
             onSuccess: () => evaluationForm.reset(),
@@ -533,6 +622,14 @@ const handleTailoredResumeUpdated = (
     }
 };
 
+const handleResumeUpdated = (payload: ResumeUpdatedPayload) => {
+    if (payload.resume.id !== resume.value.id) {
+        return;
+    }
+
+    resume.value = cloneResume(payload.resume);
+};
+
 const realtimeChannel = ref<ReturnType<typeof userChannel> | null>(null);
 
 const registerRealtimeHandlers = () => {
@@ -550,9 +647,11 @@ const registerRealtimeHandlers = () => {
 
     channel.stopListening('.ResumeEvaluationUpdated');
     channel.stopListening('.TailoredResumeUpdated');
+    channel.stopListening('.ResumeUpdated');
 
     channel.listen('.ResumeEvaluationUpdated', handleResumeEvaluationUpdated);
     channel.listen('.TailoredResumeUpdated', handleTailoredResumeUpdated);
+    channel.listen('.ResumeUpdated', handleResumeUpdated);
 
     realtimeChannel.value = channel;
 };
@@ -565,6 +664,7 @@ onBeforeUnmount(() => {
     if (realtimeChannel.value) {
         realtimeChannel.value.stopListening('.ResumeEvaluationUpdated');
         realtimeChannel.value.stopListening('.TailoredResumeUpdated');
+        realtimeChannel.value.stopListening('.ResumeUpdated');
     }
 });
 
@@ -618,6 +718,24 @@ const globalErrors = computed(() => page.props.errors ?? {});
                     <span class="hidden text-muted-foreground sm:inline">•</span>
                     <span class="flex items-center gap-1 text-muted-foreground">
                         Updated {{ formatDateTime(resume.updated_at) ?? '—' }}
+                    </span>
+                    <span class="hidden text-muted-foreground sm:inline">•</span>
+                    <span
+                        :class="[
+                            'inline-flex items-center gap-2 rounded-full border px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide',
+                            ingestionStatusBadgeClass,
+                        ]"
+                    >
+                        <Loader2
+                            v-if="isResumeProcessing"
+                            class="size-3 animate-spin"
+                        />
+                        <AlertTriangle
+                            v-else-if="resumeProcessingFailed"
+                            class="size-3"
+                        />
+                        <CircleCheck v-else class="size-3" />
+                        <span>{{ ingestionStatusLabel }}</span>
                     </span>
                     <span class="hidden text-muted-foreground sm:inline">•</span>
                     <span class="flex items-center gap-1 text-muted-foreground">
@@ -692,9 +810,13 @@ const globalErrors = computed(() => page.props.errors ?? {});
                             type="button"
                             :class="[
                                 'group flex items-center justify-between gap-4 rounded-xl border px-4 py-3 text-left transition',
-                                hasResumeContent
-                                    ? 'border-success/50 bg-success/10 hover:border-success/60 hover:bg-success/15'
-                                    : 'border-border/60 bg-background/60 hover:border-primary/60 hover:bg-primary/5',
+                                resumeProcessingFailed
+                                    ? 'border-error/60 bg-error/10 hover:border-error/70 hover:bg-error/15'
+                                    : isResumeProcessing
+                                      ? 'border-warning/60 bg-warning/10 hover:border-warning/70 hover:bg-warning/15'
+                                      : hasResumeContent
+                                          ? 'border-success/50 bg-success/10 hover:border-success/60 hover:bg-success/15'
+                                          : 'border-border/60 bg-background/60 hover:border-primary/60 hover:bg-primary/5',
                             ]"
                             @click="scrollToSection('resume-preview')"
                         >
@@ -702,9 +824,13 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                 <ScrollText
                                     class="size-5"
                                     :class="
-                                        hasResumeContent
-                                            ? 'text-success'
-                                            : 'text-muted-foreground'
+                                        resumeProcessingFailed
+                                            ? 'text-error'
+                                            : isResumeProcessing
+                                              ? 'text-warning'
+                                              : hasResumeContent
+                                                  ? 'text-success'
+                                                  : 'text-muted-foreground'
                                     "
                                 />
                                 <div>
@@ -716,15 +842,23 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                     <p
                                         class="text-base font-semibold"
                                         :class="
-                                            hasResumeContent
-                                                ? 'text-success'
-                                                : 'text-foreground'
+                                            resumeProcessingFailed
+                                                ? 'text-error'
+                                                : isResumeProcessing
+                                                  ? 'text-warning'
+                                                  : hasResumeContent
+                                                      ? 'text-success'
+                                                      : 'text-foreground'
                                         "
                                     >
                                         {{
-                                            hasResumeContent
-                                                ? 'Ready to review'
-                                                : 'Add content'
+                                            resumeProcessingFailed
+                                                ? 'Processing failed'
+                                                : isResumeProcessing
+                                                  ? 'Processing upload'
+                                                  : hasResumeContent
+                                                      ? 'Ready to review'
+                                                      : 'Add content'
                                         }}
                                     </p>
                                 </div>
@@ -732,9 +866,13 @@ const globalErrors = computed(() => page.props.errors ?? {});
                             <ArrowUpRight
                                 :class="[
                                     'size-4 transition',
-                                    hasResumeContent
-                                        ? 'text-success'
-                                        : 'text-muted-foreground group-hover:text-foreground',
+                                    resumeProcessingFailed
+                                        ? 'text-error'
+                                        : isResumeProcessing
+                                          ? 'text-warning'
+                                          : hasResumeContent
+                                              ? 'text-success'
+                                              : 'text-muted-foreground group-hover:text-foreground',
                                 ]"
                             />
                         </button>
@@ -777,21 +915,57 @@ const globalErrors = computed(() => page.props.errors ?? {});
                         id="run-evaluation"
                         class="rounded-2xl border border-border/60 bg-card/80 p-6 shadow-sm"
                     >
-                        <header class="space-y-1">
-                            <h2 class="text-lg font-semibold text-foreground">
-                                Run a new evaluation
-                            </h2>
-                            <p class="text-sm text-muted-foreground">
+                <header class="space-y-1">
+                    <h2 class="text-lg font-semibold text-foreground">
+                        Run a new evaluation
+                    </h2>
+                    <p class="text-sm text-muted-foreground">
                                 Compare this resume against a job by URL or by
-                                pasting the description. Choose the model that
-                                best fits your review depth.
-                            </p>
-                        </header>
+                        pasting the description. Choose the model that
+                        best fits your review depth.
+                    </p>
+                </header>
 
-                        <form
-                            class="mt-4 flex flex-col gap-5"
-                            @submit.prevent="submitEvaluation"
-                        >
+                <div
+                    v-if="!canRunEvaluation"
+                    class="mt-4 rounded-xl border border-border/60 bg-background/70 p-4 text-sm"
+                >
+                    <div class="flex items-start gap-3">
+                        <Loader2
+                            v-if="isResumeProcessing"
+                            class="mt-0.5 size-4 animate-spin text-warning"
+                        />
+                        <AlertTriangle
+                            v-else
+                            class="mt-0.5 size-4 text-error"
+                        />
+                        <div class="space-y-2">
+                            <p
+                                :class="
+                                    isResumeProcessing
+                                        ? 'font-medium text-warning'
+                                        : 'font-medium text-error'
+                                "
+                            >
+                                {{ evaluationDisabledMessage }}
+                            </p>
+                            <p
+                                v-if="
+                                    resumeProcessingFailed &&
+                                    ingestionErrorMessage
+                                "
+                                class="text-xs text-muted-foreground"
+                            >
+                                Error: {{ ingestionErrorMessage }}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <form
+                    class="mt-4 flex flex-col gap-5"
+                    @submit.prevent="submitEvaluation"
+                >
                             <div>
                                 <Label class="text-xs font-semibold uppercase">
                                     Job description source
@@ -962,11 +1136,14 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                 <InputError :message="evaluationForm.errors.notes" />
                             </div>
 
-                            <Button
-                                type="submit"
-                                :disabled="evaluationForm.processing"
-                                class="justify-center"
-                            >
+                        <Button
+                            type="submit"
+                            :disabled="
+                                evaluationForm.processing || !canRunEvaluation
+                            "
+                            :aria-disabled="!canRunEvaluation"
+                            class="justify-center"
+                        >
                                 <CircleCheck class="mr-2 size-4" />
                                 Run evaluation
                             </Button>
@@ -1079,11 +1256,34 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                 for every evaluation and tailored variation.
                             </p>
                         </header>
+                    <div
+                        class="rounded-xl border border-border/60 bg-background/80 p-4"
+                    >
                         <div
-                            class="rounded-xl border border-border/60 bg-background/80 p-4"
+                            v-if="isResumeProcessing"
+                            class="flex items-center gap-3 text-sm text-muted-foreground"
                         >
-                            <MarkdownViewer :content="resume.content_markdown" />
+                            <Loader2 class="size-5 animate-spin text-warning" />
+                            <span>
+                                Processing your PDF upload. Markdown preview will appear shortly.
+                            </span>
                         </div>
+                        <div v-else-if="resumeProcessingFailed" class="space-y-2">
+                            <p class="text-sm font-semibold text-error">
+                                We couldn't process this PDF upload.
+                            </p>
+                            <p
+                                v-if="ingestionErrorMessage"
+                                class="text-xs text-muted-foreground"
+                            >
+                                Error: {{ ingestionErrorMessage }}
+                            </p>
+                        </div>
+                        <MarkdownViewer
+                            v-else
+                            :content="resume.content_markdown"
+                        />
+                    </div>
                     </div>
 
                     <div

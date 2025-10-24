@@ -12,6 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class ResumeEvaluationController extends Controller
 {
@@ -21,6 +22,12 @@ class ResumeEvaluationController extends Controller
     ): RedirectResponse {
         $user = $request->user();
         abort_unless($resume->user_id === $user->id, 404);
+
+        if ($resume->ingestion_status !== 'completed') {
+            throw ValidationException::withMessages([
+                'resume' => 'Resume is still processing. Try again once ingestion completes.',
+            ]);
+        }
 
         $jobInputType = $request->string('job_input_type')->trim()->lower()->value();
         $model = $request->string('model')->trim()->lower()->value();
