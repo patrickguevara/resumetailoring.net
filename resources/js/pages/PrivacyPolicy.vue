@@ -64,7 +64,7 @@ const currentYear = new Date().getFullYear();
             </main>
 
             <footer class="flex flex-col items-start gap-2 text-sm text-[#6b6b68] dark:text-[#9ca3af] sm:flex-row sm:items-center sm:justify-between">
-                <p>Need something clarified? <a href="mailto:support@resumetailor.app" class="underline decoration-[#38bdf8] decoration-2 underline-offset-4 hover:text-[#0f172a] dark:hover:text-white">Email us</a>.</p>
+                <p>Need something clarified? <a href="mailto:support@resumetailoring.net" class="underline decoration-[#38bdf8] decoration-2 underline-offset-4 hover:text-[#0f172a] dark:hover:text-white">Email us</a>.</p>
                 <div class="flex gap-4">
                     <Link href="/terms" class="hover:text-[#0f172a] dark:hover:text-white">Terms of Service</Link>
                     <Link href="/" class="hover:text-[#0f172a] dark:hover:text-white">Homepage</Link>
