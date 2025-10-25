@@ -17,6 +17,67 @@ export interface NavItem {
     isActive?: boolean;
 }
 
+export type UsageFeatureKey =
+    | 'resume_uploads'
+    | 'evaluations'
+    | 'tailored_resumes'
+    | 'company_research';
+
+export interface UsageFeatureUsage {
+    key: UsageFeatureKey;
+    label: string;
+    used: number;
+    limit: number | null;
+    remaining: number | null;
+}
+
+export interface UsageSummary {
+    has_subscription: boolean;
+    features: UsageFeatureUsage[];
+}
+
+export interface BillingPlan {
+    name?: string | null;
+    amount?: number | null;
+    currency?: string | null;
+    interval?: string | null;
+    description?: string | null;
+    features: string[];
+}
+
+export interface BillingFreeTier {
+    label?: string | null;
+    helper?: string | null;
+    limits: Record<UsageFeatureKey, number>;
+}
+
+export interface BillingSubscription {
+    status?: string | null;
+    active: boolean;
+    on_grace_period: boolean;
+    renews_at?: string | null;
+    ends_at?: string | null;
+    trial_ends_at?: string | null;
+}
+
+export interface BillingContext {
+    plan: BillingPlan | null;
+    free_tier: BillingFreeTier | null;
+    subscription: BillingSubscription | null;
+    usage: UsageSummary | null;
+}
+
+export interface FlashMessage {
+    type?: string | null;
+    message: string;
+}
+
+export interface UsageLimitNotice {
+    message: string;
+    feature: UsageFeatureKey | string;
+    limit: number | null;
+}
+
 export type AppPageProps<
     T extends Record<string, unknown> = Record<string, unknown>,
 > = T & {
@@ -24,6 +85,9 @@ export type AppPageProps<
     quote: { message: string; author: string };
     auth: Auth;
     sidebarOpen: boolean;
+    billing: BillingContext;
+    flash?: FlashMessage | null;
+    usageLimit?: UsageLimitNotice | null;
 };
 
 export interface User {

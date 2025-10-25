@@ -22,6 +22,10 @@ Route::get('/terms', function () {
     return Inertia::render('TermsOfService');
 })->name('terms');
 
+Route::get('/pricing', function () {
+    return Inertia::render('Pricing');
+})->name('pricing');
+
 Route::middleware(['auth'])->group(function () {
     Route::get('dashboard', DashboardController::class)->name('dashboard');
 

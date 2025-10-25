@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\UsageFeature;
 use App\Http\Requests\StoreResumeEvaluationRequest;
 use App\Jobs\ProcessResumeEvaluation;
 use App\Models\JobDescription;
 use App\Models\Resume;
 use App\Models\ResumeEvaluation;
+use App\Services\UsageMeter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
@@ -16,12 +18,18 @@ use Illuminate\Validation\ValidationException;
 
 class ResumeEvaluationController extends Controller
 {
+    public function __construct(private readonly UsageMeter $usageMeter)
+    {
+    }
+
     public function store(
         StoreResumeEvaluationRequest $request,
         Resume $resume
     ): RedirectResponse {
         $user = $request->user();
         abort_unless($resume->user_id === $user->id, 404);
+
+        $this->usageMeter->assertCanUse($user, UsageFeature::Evaluation);
 
         if ($resume->ingestion_status !== 'completed') {
             throw ValidationException::withMessages([
@@ -85,6 +93,8 @@ class ResumeEvaluationController extends Controller
             jobUrlOverride: $jobUrl,
             modelOverride: $model,
         );
+
+        $this->usageMeter->increment($user, UsageFeature::Evaluation);
 
         return to_route('resumes.show', $resume)->with('flash', [
             'type' => 'info',

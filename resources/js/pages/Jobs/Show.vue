@@ -6,7 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/AppLayout.vue';
+import { useBilling } from '@/composables/useBilling';
 import { userChannel } from '@/lib/realtime';
+import billingRoutes from '@/routes/billing';
 import evaluationRoutes from '@/routes/evaluations';
 import jobsRoutes from '@/routes/jobs';
 import resumeRoutes from '@/routes/resumes';
@@ -420,6 +422,69 @@ const availableModels = [
     },
 ];
 
+const { hasSubscription, limitReached, remaining, planPrice } = useBilling();
+const evaluationLimitReached = limitReached('evaluations');
+const evaluationRemaining = remaining('evaluations');
+const evaluationBlockedByLimit = computed(
+    () => !hasSubscription.value && evaluationLimitReached.value,
+);
+const companyResearchLimitReached = limitReached('company_research');
+const companyResearchRemaining = remaining('company_research');
+const researchBlocked = computed(
+    () => !hasSubscription.value && companyResearchLimitReached.value,
+);
+const tailoringLimitReached = limitReached('tailored_resumes');
+const tailoringRemaining = remaining('tailored_resumes');
+const tailoringBlocked = computed(
+    () => !hasSubscription.value && tailoringLimitReached.value,
+);
+const planPriceLabel = computed(() => planPrice.value ?? '$10/month');
+const evaluationAllowanceCopy = computed(() => {
+    if (hasSubscription.value) {
+        return 'Unlimited evaluations are included with your plan.';
+    }
+
+    const remainingAllowance = evaluationRemaining.value ?? 0;
+
+    if (remainingAllowance > 0) {
+        return `${remainingAllowance} free evaluation${
+            remainingAllowance === 1 ? '' : 's'
+        } left in your preview.`;
+    }
+
+    return 'You have used the free evaluation included with your preview.';
+});
+const researchAllowanceCopy = computed(() => {
+    if (hasSubscription.value) {
+        return 'Unlimited company research is included with your plan.';
+    }
+
+    const remainingAllowance = companyResearchRemaining.value ?? 0;
+
+    if (remainingAllowance > 0) {
+        return `${remainingAllowance} free research run${
+            remainingAllowance === 1 ? '' : 's'
+        } left in your preview.`;
+    }
+
+    return 'Company research unlocks with Tailor Pro.';
+});
+const tailoringAllowanceCopy = computed(() => {
+    if (hasSubscription.value) {
+        return 'Unlimited tailored resumes are included with your plan.';
+    }
+
+    const remainingAllowance = tailoringRemaining.value ?? 0;
+
+    if (remainingAllowance > 0) {
+        return `${remainingAllowance} free tailored resume${
+            remainingAllowance === 1 ? '' : 's'
+        } left in your preview.`;
+    }
+
+    return 'You have used the free tailored resume included with your preview.';
+});
+
 const tailorTitles = reactive<Record<number, string>>({});
 const tailorProcessing = reactive<Record<number, boolean>>({});
 const tailorErrors = reactive<Record<number, string | null>>({});
@@ -607,6 +672,10 @@ const submitEvaluation = () => {
         return;
     }
 
+    if (evaluationBlockedByLimit.value) {
+        return;
+    }
+
     evaluationForm.post(
         jobsRoutes.evaluations.store({ job: jobState.value.id }).url,
         {
@@ -619,6 +688,10 @@ const submitEvaluation = () => {
 };
 
 const submitResearch = () => {
+    if (researchBlocked.value) {
+        return;
+    }
+
     companyResearchProcessing.value = true;
     companyResearchError.value = null;
 
@@ -637,7 +710,7 @@ const submitResearch = () => {
 };
 
 const generateTailored = (evaluation: Evaluation | null) => {
-    if (!evaluation) {
+    if (!evaluation || tailoringBlocked.value) {
         return;
     }
 
@@ -1103,6 +1176,35 @@ const globalErrors = computed(() => page.props.errors ?? {});
                             </p>
                         </header>
 
+                        <div
+                            v-if="evaluationBlockedByLimit"
+                            class="mt-4 rounded-xl border border-primary/40 bg-primary/10 p-4 text-sm text-primary"
+                        >
+                            <p class="font-semibold text-foreground">
+                                Free evaluation used
+                            </p>
+                            <p class="mt-1 text-xs text-primary/80">
+                                Upgrade for {{ planPriceLabel }} to unlock
+                                unlimited evaluations.
+                            </p>
+                            <Button
+                                size="sm"
+                                class="mt-3"
+                                variant="secondary"
+                                as-child
+                            >
+                                <Link :href="billingRoutes.edit.url()">
+                                    Upgrade account
+                                </Link>
+                            </Button>
+                        </div>
+                        <div
+                            v-else
+                            class="mt-4 rounded-lg border border-border/50 bg-muted/40 p-3 text-xs text-muted-foreground"
+                        >
+                            {{ evaluationAllowanceCopy }}
+                        </div>
+
                         <form
                             class="mt-4 flex flex-col gap-5"
                             @submit.prevent="submitEvaluation"
@@ -1213,7 +1315,8 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                 type="submit"
                                 :disabled="
                                     evaluationForm.processing ||
-                                    evaluationForm.resume_id === null
+                                    evaluationForm.resume_id === null ||
+                                    evaluationBlockedByLimit
                                 "
                                 class="justify-center"
                             >
@@ -1370,6 +1473,34 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                         existing
                                     </Badge>
                                 </div>
+                                <div
+                                    v-if="tailoringBlocked"
+                                    class="rounded-lg border border-primary/40 bg-primary/10 p-3 text-xs text-primary"
+                                >
+                                    <p class="font-semibold text-foreground">
+                                        Free tailored resume used
+                                    </p>
+                                    <p class="mt-1 text-primary/80">
+                                        Upgrade for {{ planPriceLabel }} to keep
+                                        generating tailored resumes.
+                                    </p>
+                                    <Button
+                                        size="sm"
+                                        class="mt-3"
+                                        variant="secondary"
+                                        as-child
+                                    >
+                                        <Link :href="billingRoutes.edit.url()">
+                                            Upgrade account
+                                        </Link>
+                                    </Button>
+                                </div>
+                                <div
+                                    v-else
+                                    class="rounded-lg border border-border/50 bg-muted/40 p-3 text-xs text-muted-foreground"
+                                >
+                                    {{ tailoringAllowanceCopy }}
+                                </div>
                                 <div class="space-y-2">
                                     <Label
                                         :for="`tailored-title-${activeEvaluation.id}`"
@@ -1388,7 +1519,8 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                     size="sm"
                                     :disabled="
                                         tailorProcessing[activeEvaluation.id] ||
-                                        activeEvaluation.status !== 'completed'
+                                        activeEvaluation.status !== 'completed' ||
+                                        tailoringBlocked
                                     "
                                     @click="generateTailored(activeEvaluation)"
                                 >
@@ -1570,11 +1702,44 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                 class="flex flex-col gap-5"
                                 @submit.prevent="submitResearch"
                             >
-                                <div class="space-y-2">
-                                    <Label for="company_name">Company name</Label>
-                                    <Input
-                                        id="company_name"
-                                        v-model="researchForm.company"
+                                <div
+                                    v-if="researchBlocked"
+                                    class="rounded-xl border border-primary/40 bg-primary/10 p-4 text-sm text-primary"
+                                >
+                                    <p class="font-semibold text-foreground">
+                                        Company research is a paid feature
+                                    </p>
+                                    <p class="mt-1 text-xs text-primary/80">
+                                        Upgrade for {{ planPriceLabel }} to run
+                                        unlimited research briefings.
+                                    </p>
+                                    <Button
+                                        size="sm"
+                                        class="mt-3"
+                                        variant="secondary"
+                                        as-child
+                                    >
+                                        <Link :href="billingRoutes.edit.url()">
+                                            Upgrade account
+                                        </Link>
+                                    </Button>
+                                </div>
+                                <div
+                                    v-else
+                                    class="rounded-xl border border-border/50 bg-muted/40 p-3 text-xs text-muted-foreground"
+                                >
+                                    {{ researchAllowanceCopy }}
+                                </div>
+
+                                <fieldset
+                                    :disabled="researchBlocked"
+                                    class="flex flex-col gap-5"
+                                >
+                                    <div class="space-y-2">
+                                        <Label for="company_name">Company name</Label>
+                                        <Input
+                                            id="company_name"
+                                            v-model="researchForm.company"
                                         name="company"
                                         type="text"
                                         placeholder="Acme Robotics"
@@ -1638,7 +1803,7 @@ const globalErrors = computed(() => page.props.errors ?? {});
 
                                 <Button
                                     type="submit"
-                                    :disabled="isResearchRunning"
+                                    :disabled="isResearchRunning || researchBlocked"
                                     class="justify-center"
                                 >
                                     <Loader2
@@ -1668,6 +1833,7 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                 >
                                     Sit tight—we'll update the briefing as soon as it finishes.
                                 </p>
+                                </fieldset>
                             </form>
                         </div>
                     </div>

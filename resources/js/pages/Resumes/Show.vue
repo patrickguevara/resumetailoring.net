@@ -6,7 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/AppLayout.vue';
+import { useBilling } from '@/composables/useBilling';
 import { userChannel } from '@/lib/realtime';
+import billingRoutes from '@/routes/billing';
 import jobsRoutes from '@/routes/jobs';
 import resumeRoutes from '@/routes/resumes';
 import type { BreadcrumbItem } from '@/types';
@@ -147,6 +149,29 @@ const evaluationForm = useForm({
     job_company: '',
     model: 'gpt-5-nano',
     notes: '',
+});
+
+const { hasSubscription, limitReached, remaining, planPrice } = useBilling();
+const evaluationLimitReached = limitReached('evaluations');
+const evaluationRemaining = remaining('evaluations');
+const evaluationBlockedByLimit = computed(
+    () => !hasSubscription.value && evaluationLimitReached.value,
+);
+const planPriceLabel = computed(() => planPrice.value ?? '$10/month');
+const evaluationAllowanceCopy = computed(() => {
+    if (hasSubscription.value) {
+        return 'Unlimited evaluations are included with your plan.';
+    }
+
+    const remainingAllowance = evaluationRemaining.value ?? 0;
+
+    if (remainingAllowance > 0) {
+        return `${remainingAllowance} free evaluation${
+            remainingAllowance === 1 ? '' : 's'
+        } left in your preview.`;
+    }
+
+    return 'You have used the free evaluation included with your preview.';
 });
 
 const availableModels = [
@@ -393,9 +418,17 @@ const resumeProcessingFailed = computed(
 const ingestionErrorMessage = computed(
     () => resume.value.ingestion_error ?? null,
 );
-const canRunEvaluation = computed(
-    () => resume.value.ingestion_status === 'completed',
-);
+const canRunEvaluation = computed(() => {
+    if (resume.value.ingestion_status !== 'completed') {
+        return false;
+    }
+
+    if (evaluationBlockedByLimit.value) {
+        return false;
+    }
+
+    return true;
+});
 const ingestionStatusLabel = computed(() => {
     switch (resume.value.ingestion_status) {
         case 'processing':
@@ -427,6 +460,10 @@ const evaluationDisabledMessage = computed(() => {
             ingestionErrorMessage.value ??
             'Resume processing failed. Upload a new file or contact support.'
         );
+    }
+
+    if (evaluationBlockedByLimit.value) {
+        return `Free evaluation used. Upgrade for ${planPriceLabel.value} to keep going.`;
     }
 
     return null;
@@ -927,6 +964,13 @@ const globalErrors = computed(() => page.props.errors ?? {});
                 </header>
 
                 <div
+                    v-if="!evaluationBlockedByLimit"
+                    class="mt-3 rounded-lg border border-border/50 bg-muted/40 p-3 text-xs text-muted-foreground"
+                >
+                    {{ evaluationAllowanceCopy }}
+                </div>
+
+                <div
                     v-if="!canRunEvaluation"
                     class="mt-4 rounded-xl border border-border/60 bg-background/70 p-4 text-sm"
                 >
@@ -949,6 +993,17 @@ const globalErrors = computed(() => page.props.errors ?? {});
                             >
                                 {{ evaluationDisabledMessage }}
                             </p>
+                            <div v-if="evaluationBlockedByLimit" class="pt-2">
+                                <Button
+                                    size="sm"
+                                    variant="secondary"
+                                    as-child
+                                >
+                                    <Link :href="billingRoutes.edit.url()">
+                                        Upgrade for {{ planPriceLabel }}
+                                    </Link>
+                                </Button>
+                            </div>
                             <p
                                 v-if="
                                     resumeProcessingFailed &&

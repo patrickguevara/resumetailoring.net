@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import AppLayout from '@/layouts/AppLayout.vue';
+import { useBilling } from '@/composables/useBilling';
 import { dashboard } from '@/routes';
+import billingRoutes from '@/routes/billing';
 import evaluationRoutes from '@/routes/evaluations';
 import jobsRoutes from '@/routes/jobs';
 import resumeRoutes from '@/routes/resumes';
@@ -196,6 +198,50 @@ const recentResumes = computed(() => props.recent.resumes ?? []);
 const recentJobs = computed(() => props.recent.jobs ?? []);
 const recentEvaluations = computed(() => props.recent.evaluations ?? []);
 
+const {
+    hasSubscription,
+    usageFeatures,
+    planPrice,
+    planName,
+} = useBilling();
+const limitedFeatures = computed(() =>
+    usageFeatures.value.filter((feature) => feature.limit !== null),
+);
+const showTrialCard = computed(
+    () => !hasSubscription.value && limitedFeatures.value.length > 0,
+);
+const trialFeatureList = computed(() =>
+    limitedFeatures.value.map((feature) => ({
+        key: feature.key,
+        label: feature.label,
+        used: Math.min(
+            feature.used,
+            feature.limit ?? feature.used,
+        ),
+        limit: feature.limit,
+        remaining:
+            feature.limit !== null
+                ? Math.max(feature.limit - feature.used, 0)
+                : null,
+    })),
+);
+const nextTrialFeature = computed(() =>
+    trialFeatureList.value.find((feature) => (feature.remaining ?? 0) > 0),
+);
+const trialHeadline = computed(() => {
+    if (!showTrialCard.value) {
+        return null;
+    }
+
+    if (nextTrialFeature.value && nextTrialFeature.value.remaining !== null) {
+        const label = nextTrialFeature.value.label.toLowerCase();
+        return `${nextTrialFeature.value.remaining} ${label} left`;
+    }
+
+    return 'Free preview complete';
+});
+const planPriceLabel = computed(() => planPrice.value ?? '$10/month');
+
 const resumeTitle = (resume: RecentResume) =>
     resume.title?.trim() || 'Untitled resume';
 
@@ -257,6 +303,58 @@ const evaluationStatusClass = (status: string) =>
                     <span>Last activity: {{ lastActivityLabel }}</span>
                 </div>
             </div>
+
+            <section
+                v-if="showTrialCard"
+                class="rounded-2xl border border-border/60 bg-card/80 p-6 shadow-sm"
+            >
+                <div
+                    class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between"
+                >
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-wide text-primary">
+                            Free preview
+                        </p>
+                        <h2 class="mt-1 text-2xl font-semibold text-foreground">
+                            {{ trialHeadline }}
+                        </h2>
+                        <p class="text-sm text-muted-foreground">
+                            Upgrade to {{ planName }} for {{ planPriceLabel }}
+                            and remove all limits.
+                        </p>
+                    </div>
+                    <Button size="lg" as-child>
+                        <Link :href="billingRoutes.edit.url()">
+                            Upgrade for {{ planPriceLabel }}
+                        </Link>
+                    </Button>
+                </div>
+
+                <div
+                    class="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
+                >
+                    <article
+                        v-for="feature in trialFeatureList"
+                        :key="feature.key"
+                        class="rounded-xl border border-border/60 bg-background/80 p-4"
+                    >
+                        <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                            {{ feature.label }}
+                        </p>
+                        <p class="mt-2 text-2xl font-semibold text-foreground">
+                            <template v-if="feature.limit !== null">
+                                {{ feature.used }} / {{ feature.limit }}
+                            </template>
+                            <template v-else>
+                                {{ feature.used }}
+                            </template>
+                        </p>
+                        <p class="text-xs text-muted-foreground">
+                            {{ feature.remaining ?? 0 }} remaining
+                        </p>
+                    </article>
+                </div>
+            </section>
 
             <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 <Card

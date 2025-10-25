@@ -2,16 +2,22 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\UsageFeature;
 use App\Http\Requests\StoreTailoredResumeRequest;
 use App\Jobs\GenerateTailoredResume;
 use App\Models\ResumeEvaluation;
 use App\Models\TailoredResume;
+use App\Services\UsageMeter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 
 class TailoredResumeController extends Controller
 {
+    public function __construct(private readonly UsageMeter $usageMeter)
+    {
+    }
+
     public function store(
         StoreTailoredResumeRequest $request,
         ResumeEvaluation $evaluation
@@ -19,6 +25,8 @@ class TailoredResumeController extends Controller
         $user = $request->user();
 
         abort_unless($evaluation->user_id === $user->id, 404);
+
+        $this->usageMeter->assertCanUse($user, UsageFeature::Tailoring);
 
         if ($evaluation->feedback_markdown === null) {
             return back()->withErrors([
@@ -32,6 +40,8 @@ class TailoredResumeController extends Controller
             evaluationId: $evaluation->id,
             customTitle: $title !== '' ? $title : null,
         );
+
+        $this->usageMeter->increment($user, UsageFeature::Tailoring);
 
         return to_route('resumes.show', $evaluation->resume)->with('flash', [
             'type' => 'info',

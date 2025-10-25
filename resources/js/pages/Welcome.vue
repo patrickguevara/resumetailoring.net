@@ -2,7 +2,7 @@
 import { Head, Link } from '@inertiajs/vue3';
 
 import AppLogoIcon from '@/components/AppLogoIcon.vue';
-import { dashboard, login, register } from '@/routes';
+import { dashboard, login, register, pricing } from '@/routes';
 
 const currentYear = new Date().getFullYear();
 
@@ -99,6 +99,12 @@ const testimonials = [
                         Proof
                     </a> -->
                     <Link
+                        :href="pricing()"
+                        class="transition hover:text-[#0f172a] dark:hover:text-white"
+                    >
+                        Pricing
+                    </Link>
+                    <Link
                         :href="login()"
                         class="rounded-md border border-transparent px-4 py-2 transition hover:border-[#d0d0cd] hover:bg-white/70 dark:hover:border-[#1f2937] dark:hover:bg-white/5"
                     >
@@ -150,12 +156,12 @@ const testimonials = [
                             >
                                 Go to dashboard
                             </Link>
-                            <!-- <Link
-                                :href="login()"
-                                class="inline-flex items-center justify-center gap-2 rounded-md border border-[#d0d0cd] px-6 py-3 text-base font-medium transition hover:border-[#0f172a] hover:text-[#0f172a] dark:border-[#1f2937] dark:hover:border-[#38bdf8] dark:hover:text-[#38bdf8]"
+                            <Link
+                                :href="pricing()"
+                                class="inline-flex items-center justify-center gap-2 rounded-md border border-[#d0d0cd] px-6 py-3 text-base font-medium text-[#1c1c19] transition hover:border-[#0f172a] hover:text-[#0f172a] dark:border-[#1f2937] dark:text-[#d1d5db] dark:hover:border-[#38bdf8] dark:hover:text-[#38bdf8]"
                             >
-                                Watch a demo
-                            </Link> -->
+                                View pricing
+                            </Link>
                         </div>
                         <!-- Stats cards -->
                         <!-- <div class="grid gap-6 pt-8 sm:grid-cols-3">

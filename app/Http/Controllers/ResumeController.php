@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\UsageFeature;
 use App\Events\ResumeUpdated;
 use App\Http\Requests\StoreResumeRequest;
 use App\Jobs\ProcessUploadedResume;
 use App\Models\Resume;
 use App\Models\ResumeEvaluation;
+use App\Services\UsageMeter;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
@@ -14,6 +16,10 @@ use Inertia\Inertia;
 
 class ResumeController extends Controller
 {
+    public function __construct(private readonly UsageMeter $usageMeter)
+    {
+    }
+
     public function index(Request $request)
     {
         $resumes = $request->user()
@@ -100,6 +106,8 @@ class ResumeController extends Controller
     {
         $user = $request->user();
 
+        $this->usageMeter->assertCanUse($user, UsageFeature::ResumeUpload);
+
         $inputType = $request->string('input_type')->trim()->lower()->value() ?: 'markdown';
         $title = $request->string('title')->trim();
         $slug = $this->makeSlug($title);
@@ -160,6 +168,8 @@ class ResumeController extends Controller
                 'message' => 'Resume saved successfully.',
             ];
         }
+
+        $this->usageMeter->increment($user, UsageFeature::ResumeUpload);
 
         return to_route('resumes.show', $resume)->with('flash', [
             'type' => $flash['type'],

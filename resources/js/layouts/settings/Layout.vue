@@ -3,6 +3,7 @@ import Heading from '@/components/Heading.vue';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { toUrl, urlIsActive } from '@/lib/utils';
+import billingRoutes from '@/routes/billing';
 import { edit as editAppearance } from '@/routes/appearance';
 import { edit as editPassword } from '@/routes/password';
 import { edit as editProfile } from '@/routes/profile';
@@ -27,6 +28,10 @@ const sidebarNavItems: NavItem[] = [
         title: 'Appearance',
         href: editAppearance(),
     },
+    {
+        title: 'Billing & usage',
+        href: billingRoutes.edit(),
+    },
 ];
 
 const currentPath = typeof window !== undefined ? window.location.pathname : '';
@@ -36,7 +41,7 @@ const currentPath = typeof window !== undefined ? window.location.pathname : '';
     <div class="px-4 py-6">
         <Heading
             title="Settings"
-            description="Manage your profile and account settings"
+            description="Manage your profile, billing, and account settings"
         />
 
         <div class="flex flex-col lg:flex-row lg:space-x-12">

@@ -1,10 +1,12 @@
 <?php
 
+use App\Exceptions\UsageLimitExceededException;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Request;
 use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -24,5 +26,26 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        //
+        $exceptions->render(function (UsageLimitExceededException $exception, Request $request) {
+            $payload = [
+                'message' => $exception->userMessage(),
+                'feature' => $exception->feature->value,
+                'limit' => $exception->limit,
+            ];
+
+            if ($request->expectsJson()) {
+                return response()->json($payload, 403);
+            }
+
+            $redirect = $request->isMethod('get')
+                ? to_route('billing.edit')
+                : back()->withInput($request->except(['resume_file']));
+
+            return $redirect
+                ->with('flash', [
+                    'type' => 'warning',
+                    'message' => $payload['message'],
+                ])
+                ->with('usageLimit', $payload);
+        });
     })->create();

@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AppLayout from '@/layouts/AppLayout.vue';
+import { useBilling } from '@/composables/useBilling';
+import billingRoutes from '@/routes/billing';
 import resumeRoutes from '@/routes/resumes';
 import type { BreadcrumbItem } from '@/types';
 import { Head, Link, useForm } from '@inertiajs/vue3';
@@ -85,6 +87,29 @@ const hasRecentEvaluations = computed(
 
 const fileInput = ref<HTMLInputElement | null>(null);
 const isPdfUpload = computed(() => form.input_type === 'pdf');
+
+const { hasSubscription, limitReached, remaining, planPrice } = useBilling();
+const resumeLimitReached = limitReached('resume_uploads');
+const resumeRemaining = remaining('resume_uploads');
+const resumeFormLocked = computed(
+    () => !hasSubscription.value && resumeLimitReached.value,
+);
+const planPriceLabel = computed(() => planPrice.value ?? '$10/month');
+const resumeAllowanceCopy = computed(() => {
+    if (hasSubscription.value) {
+        return 'Unlimited resume uploads included with your plan.';
+    }
+
+    const remainingAllowance = resumeRemaining.value;
+
+    if (remainingAllowance && remainingAllowance > 0) {
+        return `Preview includes ${remainingAllowance} more resume ${
+            remainingAllowance === 1 ? 'upload' : 'uploads'
+        }.`;
+    }
+
+    return 'You have used your free resume upload.';
+});
 
 const handleFileChange = (event: Event) => {
     const target = event.target as HTMLInputElement | null;
@@ -184,6 +209,10 @@ const resumeStatusClass = (status: string) =>
     'border-muted/60 bg-muted/40 text-muted-foreground';
 
 const submit = () => {
+    if (resumeFormLocked.value) {
+        return;
+    }
+
     if (isPdfUpload.value && !form.resume_file) {
         form.setError('resume_file', 'Please select a PDF resume to upload.');
         return;
@@ -480,7 +509,37 @@ const submit = () => {
                         </p>
                     </header>
 
+                    <div
+                        v-if="resumeFormLocked"
+                        class="rounded-xl border border-primary/30 bg-primary/10 p-4 text-sm text-primary"
+                    >
+                        <p class="font-semibold text-foreground">
+                            Free upload used
+                        </p>
+                        <p class="mt-1 text-xs text-primary/80">
+                            Upgrade for {{ planPriceLabel }} to add unlimited
+                            resumes.
+                        </p>
+                        <Button
+                            size="sm"
+                            class="mt-3"
+                            variant="secondary"
+                            as-child
+                        >
+                            <Link :href="billingRoutes.edit.url()">
+                                Upgrade for {{ planPriceLabel }}
+                            </Link>
+                        </Button>
+                    </div>
+                    <div
+                        v-else
+                        class="rounded-xl border border-border/50 bg-muted/40 p-3 text-xs text-muted-foreground"
+                    >
+                        {{ resumeAllowanceCopy }}
+                    </div>
+
                     <form class="flex flex-col gap-5" @submit.prevent="submit">
+                        <fieldset :disabled="resumeFormLocked" class="flex flex-col gap-5">
                         <div class="space-y-2">
                             <Label for="title">Title</Label>
                             <Input
@@ -579,11 +638,12 @@ const submit = () => {
 
                         <Button
                             type="submit"
-                            :disabled="form.processing"
+                            :disabled="form.processing || resumeFormLocked"
                             class="justify-center"
                         >
                             Save resume
                         </Button>
+                        </fieldset>
                     </form>
                 </aside>
             </div>
