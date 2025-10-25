@@ -17,18 +17,19 @@ import { dashboard } from '@/routes';
 import billingRoutes from '@/routes/billing';
 import jobs from '@/routes/jobs';
 import resumes from '@/routes/resumes';
-import { type NavItem } from '@/types';
-import { Link } from '@inertiajs/vue3';
+import { type AppPageProps, type NavItem } from '@/types';
+import { Link, usePage } from '@inertiajs/vue3';
 import {
     BriefcaseBusiness,
     Clipboard,
     House,
     LayoutGrid,
+    Settings2,
 } from 'lucide-vue-next';
 import { computed } from 'vue';
 import AppLogo from './AppLogo.vue';
 
-const mainNavItems: NavItem[] = [
+const baseNavItems: NavItem[] = [
     {
         title: 'Dashboard',
         href: dashboard(),
@@ -53,6 +54,24 @@ const footerNavItems: NavItem[] = [
         icon: House,
     },
 ];
+
+const page = usePage<AppPageProps>();
+const canAccessAdmin = computed(
+    () => page.props.admin?.can_access_admin ?? false,
+);
+const mainNavItems = computed<NavItem[]>(() => {
+    const items = [...baseNavItems];
+
+    if (canAccessAdmin.value) {
+        items.push({
+            title: 'Admin',
+            href: '/admin',
+            icon: Settings2,
+        });
+    }
+
+    return items;
+});
 
 const { hasSubscription, usageFeatures, planPrice } = useBilling();
 const limitedFeatures = computed(() =>

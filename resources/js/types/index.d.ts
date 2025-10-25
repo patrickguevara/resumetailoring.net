@@ -78,12 +78,17 @@ export interface UsageLimitNotice {
     limit: number | null;
 }
 
+export interface AdminContext {
+    can_access_admin: boolean;
+}
+
 export type AppPageProps<
     T extends Record<string, unknown> = Record<string, unknown>,
 > = T & {
     name: string;
     quote: { message: string; author: string };
     auth: Auth;
+    admin: AdminContext;
     sidebarOpen: boolean;
     billing: BillingContext;
     flash?: FlashMessage | null;

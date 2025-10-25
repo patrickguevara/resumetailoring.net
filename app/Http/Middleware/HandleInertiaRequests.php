@@ -7,6 +7,7 @@ use App\Services\UsageMeter;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Gate;
 use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
@@ -51,6 +52,7 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $user,
             ],
+            'admin' => $this->adminPayload($user),
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             'billing' => [
                 'plan' => $this->planPayload(),
@@ -121,6 +123,20 @@ class HandleInertiaRequests extends Middleware
             'renews_at' => $renewsAt,
             'ends_at' => $subscription->ends_at?->toIso8601String(),
             'trial_ends_at' => $subscription->trial_ends_at?->toIso8601String(),
+        ];
+    }
+
+    /**
+     * @return array<string, bool>
+     */
+    protected function adminPayload(?User $user): array
+    {
+        $canAccessAdmin = $user
+            ? Gate::forUser($user)->allows('viewAdminDashboard')
+            : false;
+
+        return [
+            'can_access_admin' => $canAccessAdmin,
         ];
     }
 }

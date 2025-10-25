@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\JobController;
 use App\Http\Controllers\JobEvaluationController;
@@ -31,6 +32,9 @@ Route::get('/pricing', function () {
 
 Route::middleware(['auth'])->group(function () {
     Route::get('dashboard', DashboardController::class)->name('dashboard');
+    Route::get('admin', AdminDashboardController::class)
+        ->middleware('can:viewAdminDashboard')
+        ->name('admin.index');
 
     Route::get('jobs', [JobController::class, 'index'])->name('jobs.index');
     Route::get('jobs/{job}', [JobController::class, 'show'])->name('jobs.show');
