@@ -93,6 +93,9 @@ const primaryAction = computed(() =>
                             <p class="text-sm font-medium text-foreground">
                                 {{ planPriceLabel }}
                             </p>
+                            <p class="text-xs text-muted-foreground">
+                                Credit card charges show as "SAMUELDIGITALWORKSCOM".
+                            </p>
                         </div>
                         <div class="flex flex-col items-end gap-3">
                             <Badge :variant="statusVariant">
