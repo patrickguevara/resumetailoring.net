@@ -3,12 +3,13 @@
 namespace App\Http\Controllers\Settings;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Inertia\Inertia;
+use Symfony\Component\HttpFoundation\Response;
 
 class SubscriptionCheckoutController extends Controller
 {
-    public function __invoke(Request $request): RedirectResponse
+    public function __invoke(Request $request): Response
     {
         $user = $request->user();
 
@@ -28,10 +29,16 @@ class SubscriptionCheckoutController extends Controller
             ]);
         }
 
-        return $user->newSubscription('default', $priceId)->checkout([
-            'success_url' => route('billing.edit', ['checkout' => 'success']),
-            'cancel_url' => route('billing.edit', ['checkout' => 'cancelled']),
-        ]);
+        $successUrl = route('billing.edit', ['checkout' => 'success']);
+        $separator = str_contains($successUrl, '?') ? '&' : '?';
+        $successUrl .= $separator.'session_id={CHECKOUT_SESSION_ID}';
+
+        $checkout = $user->newSubscription('default', $priceId)
+            ->checkout([
+                'success_url' => $successUrl,
+                'cancel_url' => route('billing.edit', ['checkout' => 'cancelled']),
+            ]);
+
+        return Inertia::location($checkout->url);
     }
 }
-

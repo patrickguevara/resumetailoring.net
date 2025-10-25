@@ -4,7 +4,7 @@ use App\Enums\UsageFeature;
 
 return [
     'plan' => [
-        'name' => 'Tailor Pro',
+        'name' => 'Resume Tailor Pro',
         'amount' => 1000,
         'currency' => 'usd',
         'interval' => 'month',
@@ -20,11 +20,11 @@ return [
     'free_tier' => [
         'label' => 'Free preview',
         'limits' => [
-            UsageFeature::ResumeUpload->value => 1,
-            UsageFeature::Evaluation->value => 2,
+            UsageFeature::ResumeUpload->value => 2,
+            UsageFeature::Evaluation->value => 4,
             UsageFeature::Tailoring->value => 2,
-            UsageFeature::CompanyResearch->value => 0,
+            UsageFeature::CompanyResearch->value => 1,
         ],
-        'helper' => 'Try the full flow once for free, then upgrade when you are ready.',
+        'helper' => 'Try the full flow for free, then upgrade when you are ready.',
     ],
 ];

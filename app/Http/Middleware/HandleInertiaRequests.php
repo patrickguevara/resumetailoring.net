@@ -108,13 +108,17 @@ class HandleInertiaRequests extends Middleware
 
         $stripe = $subscription->asStripeSubscription();
 
+        $renewsAt = null;
+
+        if ($stripe && isset($stripe->current_period_end)) {
+            $renewsAt = Carbon::createFromTimestamp($stripe->current_period_end)->toIso8601String();
+        }
+
         return [
             'status' => $subscription->stripe_status,
             'active' => $subscription->active(),
             'on_grace_period' => $subscription->onGracePeriod(),
-            'renews_at' => $stripe
-                ? Carbon::createFromTimestamp($stripe->current_period_end)->toIso8601String()
-                : null,
+            'renews_at' => $renewsAt,
             'ends_at' => $subscription->ends_at?->toIso8601String(),
             'trial_ends_at' => $subscription->trial_ends_at?->toIso8601String(),
         ];

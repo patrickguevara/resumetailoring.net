@@ -8,6 +8,7 @@ use App\Http\Controllers\ResumeController;
 use App\Http\Controllers\ResumeEvaluationController;
 use App\Http\Controllers\TailoredResumeController;
 use Illuminate\Support\Facades\Route;
+use Laravel\Cashier\Http\Controllers\WebhookController as CashierWebhookController;
 use Inertia\Inertia;
 
 Route::get('/', function () {
@@ -21,6 +22,8 @@ Route::get('/privacy', function () {
 Route::get('/terms', function () {
     return Inertia::render('TermsOfService');
 })->name('terms');
+
+Route::post('/stripe/webhook', [CashierWebhookController::class, 'handleWebhook']);
 
 Route::get('/pricing', function () {
     return Inertia::render('Pricing');
