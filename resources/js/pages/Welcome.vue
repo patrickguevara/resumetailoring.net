@@ -2,7 +2,7 @@
 import { Head, Link } from '@inertiajs/vue3';
 
 import AppLogoIcon from '@/components/AppLogoIcon.vue';
-import { dashboard, login, register, pricing } from '@/routes';
+import { dashboard, home, login, register, pricing } from '@/routes';
 
 const currentYear = new Date().getFullYear();
 
@@ -78,10 +78,7 @@ const testimonials = [
 
         <div class="relative mx-auto flex max-w-6xl flex-col px-6 pb-24 pt-8">
             <header class="flex items-center justify-between py-4">
-                <Link
-                    :href="$page.props.auth.user ? dashboard() : register()"
-                    class="flex items-center gap-3"
-                >
+                <Link :href="home()" class="flex items-center gap-3">
                     <AppLogoIcon class="size-10" />
                     <span class="text-base font-semibold leading-tight">
                         Resume Tailoring

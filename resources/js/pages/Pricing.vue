@@ -2,7 +2,7 @@
 import AppLogoIcon from '@/components/AppLogoIcon.vue';
 import { useBilling } from '@/composables/useBilling';
 import billingRoutes from '@/routes/billing';
-import { dashboard, login, register } from '@/routes';
+import { dashboard, home, login, register } from '@/routes';
 import type { AppPageProps } from '@/types';
 import { Head, Link, usePage } from '@inertiajs/vue3';
 import type { InertiaLinkProps } from '@inertiajs/vue3';
@@ -134,7 +134,7 @@ const sellingPoints = [
 
         <div class="relative mx-auto flex max-w-6xl flex-col px-6 pb-24 pt-8">
             <header class="flex items-center justify-between py-4">
-                <Link :href="isAuthenticated ? dashboard() : register()" class="flex items-center gap-3">
+                <Link :href="home()" class="flex items-center gap-3">
                     <AppLogoIcon class="size-10" />
                     <span class="text-base font-semibold leading-tight">
                         Resume Tailoring
