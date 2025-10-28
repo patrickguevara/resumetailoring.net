@@ -37,6 +37,7 @@ class SubscriptionCheckoutController extends Controller
             ->checkout([
                 'success_url' => $successUrl,
                 'cancel_url' => route('billing.edit', ['checkout' => 'cancelled']),
+                'allow_promotion_codes' => true,
             ]);
 
         return Inertia::location($checkout->url);
