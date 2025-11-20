@@ -28,6 +28,7 @@ import {
 } from 'lucide-vue-next';
 import {
     computed,
+    nextTick,
     onBeforeUnmount,
     onMounted,
     reactive,
@@ -600,6 +601,18 @@ const activeEvaluation = computed(
             (evaluation) => evaluation.id === activeEvaluationId.value,
         ) ?? null,
 );
+
+const switchToEvaluation = (evaluationId: number) => {
+    activeEvaluationId.value = evaluationId;
+
+    // Scroll to results section with smooth animation
+    nextTick(() => {
+        const resultsElement = document.getElementById('evaluation-results');
+        if (resultsElement) {
+            resultsElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    });
+};
 
 const activeEvaluationTailored = computed(() =>
     tailoredResumes.value.filter(
