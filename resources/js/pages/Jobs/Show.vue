@@ -595,6 +595,8 @@ watch(
 
 const hasEvaluations = computed(() => evaluations.value.length > 0);
 
+const hasNoEvaluations = computed(() => evaluations.value.length === 0);
+
 const activeEvaluation = computed(
     () =>
         evaluations.value.find(
@@ -1687,11 +1689,22 @@ const globalErrors = computed(() => page.props.errors ?? {});
                             </div>
                         </div>
                         <div
+                            v-else-if="hasNoEvaluations"
+                            class="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/60 bg-background/80 p-12 text-center"
+                        >
+                            <Sparkles class="size-12 text-muted-foreground/40 mb-4" />
+                            <h3 class="text-lg font-semibold text-foreground mb-2">
+                                No evaluations yet
+                            </h3>
+                            <p class="text-sm text-muted-foreground max-w-sm">
+                                Click "New Evaluation" above to analyze how your resume matches this job.
+                            </p>
+                        </div>
+                        <div
                             v-else
                             class="rounded-xl border border-dashed border-border/60 bg-background/80 p-6 text-sm text-muted-foreground"
                         >
-                            Select an evaluation from the history panel to view
-                            details.
+                            Select an evaluation from the history below to view details.
                         </div>
                     </div>
 
