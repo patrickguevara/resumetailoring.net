@@ -1175,15 +1175,12 @@ const globalErrors = computed(() => page.props.errors ?? {});
                 </div>
             </section>
 
-            <div
-                class="grid gap-8 lg:grid-cols-[minmax(0,1fr),minmax(320px,360px)]"
-            >
-                <section class="space-y-6">
-                    <div
-                        id="run-evaluation"
-                        class="rounded-2xl border border-border/60 bg-card/80 p-6 shadow-sm"
-                    >
-                        <header class="flex items-start justify-between gap-4">
+            <div class="mx-auto w-full max-w-4xl space-y-6">
+                <div
+                    id="run-evaluation"
+                    class="rounded-2xl border border-border/60 bg-card/80 p-6 shadow-sm"
+                >
+                    <header class="flex items-start justify-between gap-4">
                             <div class="space-y-1 flex-1">
                                 <h2 class="text-lg font-semibold text-foreground">
                                     Run a new evaluation
@@ -1708,9 +1705,7 @@ const globalErrors = computed(() => page.props.errors ?? {});
                             />
                         </div>
                     </div>
-                </section>
 
-                <aside class="space-y-6">
                     <div
                         id="company-research"
                         class="rounded-2xl border border-border/60 bg-card/80 p-6 shadow-sm"
@@ -2031,7 +2026,6 @@ const globalErrors = computed(() => page.props.errors ?? {});
                             </div>
                         </div>
                     </div>
-                </aside>
             </div>
         </div>
     </AppLayout>
