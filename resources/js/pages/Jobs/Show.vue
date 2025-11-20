@@ -1730,7 +1730,7 @@ const globalErrors = computed(() => page.props.errors ?? {});
                             />
                         </header>
 
-                        <div v-if="showEvaluationHistory" class="mt-4 space-y-3">
+                        <div v-if="showEvaluationHistory" class="mt-4 space-y-3 transition-all duration-200">
                             <template v-if="hasEvaluations">
                                 <button
                                     v-for="evaluation in evaluations"
@@ -1828,7 +1828,7 @@ const globalErrors = computed(() => page.props.errors ?? {});
                             </div>
                         </header>
 
-                        <div v-if="showJobDescription" class="mt-4">
+                        <div v-if="showJobDescription" class="mt-4 transition-all duration-200">
                             <div
                                 class="rounded-xl border border-border/60 bg-background/80 p-4"
                             >
@@ -1871,7 +1871,7 @@ const globalErrors = computed(() => page.props.errors ?? {});
                             </div>
                         </header>
 
-                        <div v-if="showCompanyResearch" class="mt-4 space-y-6">
+                        <div v-if="showCompanyResearch" class="mt-4 space-y-6 transition-all duration-200">
                             <div
                                 v-if="job.company_research.summary"
                                 class="space-y-3 rounded-xl border border-border/60 bg-background/80 p-4"
