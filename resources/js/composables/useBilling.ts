@@ -1,11 +1,11 @@
-import { computed } from 'vue';
-import { usePage } from '@inertiajs/vue3';
 import type {
     AppPageProps,
     BillingContext,
     UsageFeatureKey,
     UsageFeatureUsage,
 } from '@/types';
+import { usePage } from '@inertiajs/vue3';
+import { computed } from 'vue';
 
 export const useBilling = () => {
     const page = usePage<AppPageProps>();
@@ -16,22 +16,23 @@ export const useBilling = () => {
         () => billing.value?.usage?.features ?? [],
     );
 
-    const usageByKey = computed<Record<UsageFeatureKey, UsageFeatureUsage | undefined>>(
-        () => {
-            const entries: Record<UsageFeatureKey, UsageFeatureUsage | undefined> = {
+    const usageByKey = computed<
+        Record<UsageFeatureKey, UsageFeatureUsage | undefined>
+    >(() => {
+        const entries: Record<UsageFeatureKey, UsageFeatureUsage | undefined> =
+            {
                 resume_uploads: undefined,
                 evaluations: undefined,
                 tailored_resumes: undefined,
                 company_research: undefined,
             };
 
-            usageFeatures.value.forEach((feature) => {
-                entries[feature.key as UsageFeatureKey] = feature;
-            });
+        usageFeatures.value.forEach((feature) => {
+            entries[feature.key as UsageFeatureKey] = feature;
+        });
 
-            return entries;
-        },
-    );
+        return entries;
+    });
 
     const hasSubscription = computed(
         () => billing.value?.usage?.has_subscription ?? false,
@@ -96,4 +97,3 @@ export const useBilling = () => {
 };
 
 export type BillingHelper = ReturnType<typeof useBilling>;
-

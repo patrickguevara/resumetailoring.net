@@ -1,6 +1,6 @@
+import { AppPageProps } from '@/types/index';
 import type Echo from 'laravel-echo';
 import type Pusher from 'pusher-js';
-import { AppPageProps } from '@/types/index';
 
 // Extend ImportMeta interface for Vite...
 declare module 'vite/client' {

@@ -1,13 +1,15 @@
-import Echo from 'laravel-echo';
 import type { Channel } from 'laravel-echo';
+import Echo from 'laravel-echo';
 import Pusher from 'pusher-js';
 
 let echoInstance: Echo | null = null;
 
-const defaultScheme = (import.meta.env.VITE_REVERB_SCHEME as string | undefined) ?? 'https';
+const defaultScheme =
+    (import.meta.env.VITE_REVERB_SCHEME as string | undefined) ?? 'https';
 
 const defaultPort =
-    (import.meta.env.VITE_REVERB_PORT as string | undefined) ?? (defaultScheme === 'https' ? '443' : '80');
+    (import.meta.env.VITE_REVERB_PORT as string | undefined) ??
+    (defaultScheme === 'https' ? '443' : '80');
 
 function createEcho(): Echo | null {
     const key = import.meta.env.VITE_REVERB_APP_KEY as string | undefined;
@@ -18,7 +20,9 @@ function createEcho(): Echo | null {
 
     const host =
         (import.meta.env.VITE_REVERB_HOST as string | undefined) ??
-        (typeof window !== 'undefined' ? window.location.hostname : '127.0.0.1');
+        (typeof window !== 'undefined'
+            ? window.location.hostname
+            : '127.0.0.1');
 
     const scheme = defaultScheme;
     const port = Number(defaultPort);
@@ -27,7 +31,8 @@ function createEcho(): Echo | null {
     const PusherConstructor = Pusher;
 
     if (typeof window !== 'undefined') {
-        (window as typeof window & { Pusher?: typeof Pusher }).Pusher = PusherConstructor;
+        (window as typeof window & { Pusher?: typeof Pusher }).Pusher =
+            PusherConstructor;
     }
 
     const instance = new Echo({

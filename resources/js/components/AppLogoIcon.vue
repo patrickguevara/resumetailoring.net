@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed, useAttrs } from 'vue';
-import type { HTMLAttributes } from 'vue';
 import { cn } from '@/lib/utils';
+import type { HTMLAttributes } from 'vue';
+import { computed, useAttrs } from 'vue';
 
 defineOptions({
     inheritAttrs: false,
@@ -32,7 +32,11 @@ const otherAttrs = computed(() => {
 });
 
 const imageClass = computed(() =>
-    cn('object-contain', attrs.class as HTMLAttributes['class'], props.className),
+    cn(
+        'object-contain',
+        attrs.class as HTMLAttributes['class'],
+        props.className,
+    ),
 );
 </script>
 

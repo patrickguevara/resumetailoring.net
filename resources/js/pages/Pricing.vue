@@ -1,31 +1,29 @@
 <script setup lang="ts">
 import AppLogoIcon from '@/components/AppLogoIcon.vue';
 import { useBilling } from '@/composables/useBilling';
-import billingRoutes from '@/routes/billing';
 import { dashboard, home, login, register } from '@/routes';
+import billingRoutes from '@/routes/billing';
 import type { AppPageProps } from '@/types';
-import { Head, Link, usePage } from '@inertiajs/vue3';
 import type { InertiaLinkProps } from '@inertiajs/vue3';
+import { Head, Link, usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
 
 const page = usePage<AppPageProps>();
 const isAuthenticated = computed(() => Boolean(page.props.auth.user));
 
-const {
-    planName,
-    planPrice,
-    billing,
-    hasSubscription,
-} = useBilling();
+const { planName, planPrice, billing, hasSubscription } = useBilling();
 
 const plan = computed(() => billing.value.plan);
 const planPriceLabel = computed(() => planPrice.value ?? '$10/month');
-const planFeatureList = computed(() => plan.value?.features ?? [
-    'Unlimited resume uploads',
-    'Unlimited evaluations',
-    'Unlimited tailored resumes',
-    'Unlimited company research',
-]);
+const planFeatureList = computed(
+    () =>
+        plan.value?.features ?? [
+            'Unlimited resume uploads',
+            'Unlimited evaluations',
+            'Unlimited tailored resumes',
+            'Unlimited company research',
+        ],
+);
 
 const freeTierLimits = computed<Record<string, number>>(
     () => billing.value.free_tier?.limits ?? {},
@@ -132,17 +130,22 @@ const sellingPoints = [
             ></div>
         </div>
 
-        <div class="relative mx-auto flex max-w-6xl flex-col px-6 pb-24 pt-8">
+        <div class="relative mx-auto flex max-w-6xl flex-col px-6 pt-8 pb-24">
             <header class="flex items-center justify-between py-4">
                 <Link :href="home()" class="flex items-center gap-3">
                     <AppLogoIcon class="size-10" />
-                    <span class="text-base font-semibold leading-tight">
+                    <span class="text-base leading-tight font-semibold">
                         Resume Tailoring
                     </span>
                 </Link>
 
-                <nav class="hidden items-center gap-6 text-sm font-medium md:flex">
-                    <Link :href="secondaryCta.href" class="transition hover:text-[#0f172a] dark:hover:text-white">
+                <nav
+                    class="hidden items-center gap-6 text-sm font-medium md:flex"
+                >
+                    <Link
+                        :href="secondaryCta.href"
+                        class="transition hover:text-[#0f172a] dark:hover:text-white"
+                    >
                         {{ secondaryCta.label }}
                     </Link>
                 </nav>
@@ -158,18 +161,29 @@ const sellingPoints = [
             </header>
 
             <main class="flex flex-1 flex-col">
-                <section class="grid gap-10 py-16 md:grid-cols-[1.1fr,0.9fr] md:items-start">
+                <section
+                    class="grid gap-10 py-16 md:grid-cols-[1.1fr,0.9fr] md:items-start"
+                >
                     <div class="space-y-6">
-                        <p class="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.3em] text-[#6b6b68] dark:text-[#9ca3af]">
+                        <p
+                            class="inline-flex items-center gap-2 text-xs font-semibold tracking-[0.3em] text-[#6b6b68] uppercase dark:text-[#9ca3af]"
+                        >
                             Simple pricing
                         </p>
                         <div>
-                            <h1 class="text-4xl font-semibold leading-tight sm:text-5xl">
-                                Unlock unlimited tailoring for {{ planPriceLabel }}.
+                            <h1
+                                class="text-4xl leading-tight font-semibold sm:text-5xl"
+                            >
+                                Unlock unlimited tailoring for
+                                {{ planPriceLabel }}.
                             </h1>
-                            <p class="mt-4 text-lg leading-relaxed text-[#545451] dark:text-[#b3b3ae]">
-                                Keep resume uploads, evaluations, tailored drafts, and company research all in
-                                one workspace. Free preview lets you run the full flow once before you decide.
+                            <p
+                                class="mt-4 text-lg leading-relaxed text-[#545451] dark:text-[#b3b3ae]"
+                            >
+                                Keep resume uploads, evaluations, tailored
+                                drafts, and company research all in one
+                                workspace. Free preview lets you run the full
+                                flow once before you decide.
                             </p>
                         </div>
 
@@ -191,8 +205,12 @@ const sellingPoints = [
                             </Link>
                         </div>
 
-                        <div class="rounded-2xl border border-[#deded8] bg-white/80 p-5 text-sm shadow-lg dark:border-[#1f2937] dark:bg-[#0f172a]/40">
-                            <p class="text-xs font-semibold uppercase tracking-wide text-[#6b6b68] dark:text-[#9ca3af]">
+                        <div
+                            class="rounded-2xl border border-[#deded8] bg-white/80 p-5 text-sm shadow-lg dark:border-[#1f2937] dark:bg-[#0f172a]/40"
+                        >
+                            <p
+                                class="text-xs font-semibold tracking-wide text-[#6b6b68] uppercase dark:text-[#9ca3af]"
+                            >
                                 Free preview includes
                             </p>
                             <ul class="mt-3 space-y-2">
@@ -201,7 +219,9 @@ const sellingPoints = [
                                     :key="highlight"
                                     class="flex items-center gap-3 text-[#1c1c19] dark:text-[#d1d5db]"
                                 >
-                                    <span class="inline-flex size-5 items-center justify-center rounded-full bg-[#0f172a] text-xs font-semibold text-white dark:bg-[#38bdf8] dark:text-[#0b1120]">
+                                    <span
+                                        class="inline-flex size-5 items-center justify-center rounded-full bg-[#0f172a] text-xs font-semibold text-white dark:bg-[#38bdf8] dark:text-[#0b1120]"
+                                    >
                                         •
                                     </span>
                                     {{ highlight }}
@@ -210,20 +230,38 @@ const sellingPoints = [
                         </div>
                     </div>
 
-                    <div class="rounded-3xl border border-[#deded8] bg-white/90 p-8 shadow-2xl dark:border-[#1f2937] dark:bg-[#0b1120]/90">
-                        <p class="text-xs font-semibold uppercase tracking-wide text-[#6b6b68] dark:text-[#9ca3af]">
+                    <div
+                        class="rounded-3xl border border-[#deded8] bg-white/90 p-8 shadow-2xl dark:border-[#1f2937] dark:bg-[#0b1120]/90"
+                    >
+                        <p
+                            class="text-xs font-semibold tracking-wide text-[#6b6b68] uppercase dark:text-[#9ca3af]"
+                        >
                             {{ planName }} plan
                         </p>
                         <div class="mt-4 flex items-baseline gap-2">
-                            <span class="text-5xl font-semibold text-[#0f172a] dark:text-white">
+                            <span
+                                class="text-5xl font-semibold text-[#0f172a] dark:text-white"
+                            >
                                 {{ planPriceLabel.split('/')[0] }}
                             </span>
-                            <span class="text-sm uppercase tracking-wide text-[#6b6b68] dark:text-[#9ca3af]">
-                                / {{ planPriceLabel.includes('/') ? planPriceLabel.split('/')[1] : 'month' }}
+                            <span
+                                class="text-sm tracking-wide text-[#6b6b68] uppercase dark:text-[#9ca3af]"
+                            >
+                                /
+                                {{
+                                    planPriceLabel.includes('/')
+                                        ? planPriceLabel.split('/')[1]
+                                        : 'month'
+                                }}
                             </span>
                         </div>
-                        <p class="mt-3 text-sm text-[#545451] dark:text-[#b3b3ae]">
-                            {{ plan?.description || 'Unlimited resume uploads, evaluations, tailoring, and research.' }}
+                        <p
+                            class="mt-3 text-sm text-[#545451] dark:text-[#b3b3ae]"
+                        >
+                            {{
+                                plan?.description ||
+                                'Unlimited resume uploads, evaluations, tailoring, and research.'
+                            }}
                         </p>
                         <ul class="mt-6 space-y-3 text-sm">
                             <li
@@ -231,28 +269,37 @@ const sellingPoints = [
                                 :key="feature"
                                 class="flex items-center gap-3 text-[#1c1c19] dark:text-[#d1d5db]"
                             >
-                                <span class="inline-flex size-6 items-center justify-center rounded-full bg-[#ecfccb] text-sm font-semibold text-[#166534] dark:bg-[#064e3b]/40 dark:text-[#bbf7d0]">
+                                <span
+                                    class="inline-flex size-6 items-center justify-center rounded-full bg-[#ecfccb] text-sm font-semibold text-[#166534] dark:bg-[#064e3b]/40 dark:text-[#bbf7d0]"
+                                >
                                     ✓
                                 </span>
                                 {{ feature }}
                             </li>
                         </ul>
-                        <div class="mt-6 rounded-xl border border-dashed border-[#d0d0cd] bg-[#f7f5ef] p-4 text-xs text-[#4a4a45] dark:border-[#1f2937] dark:bg-[#111827]/60 dark:text-[#cbd5f5]">
-                            Billing runs through Stripe. Upgrade instantly, downgrade anytime, and keep your workflow running with unlimited usage.
+                        <div
+                            class="mt-6 rounded-xl border border-dashed border-[#d0d0cd] bg-[#f7f5ef] p-4 text-xs text-[#4a4a45] dark:border-[#1f2937] dark:bg-[#111827]/60 dark:text-[#cbd5f5]"
+                        >
+                            Billing runs through Stripe. Upgrade instantly,
+                            downgrade anytime, and keep your workflow running
+                            with unlimited usage.
                         </div>
                     </div>
                 </section>
 
                 <section class="space-y-8">
                     <div class="space-y-3 text-center">
-                        <p class="text-xs font-semibold uppercase tracking-[0.3em] text-[#6b6b68] dark:text-[#9ca3af]">
+                        <p
+                            class="text-xs font-semibold tracking-[0.3em] text-[#6b6b68] uppercase dark:text-[#9ca3af]"
+                        >
                             Why it works
                         </p>
                         <h2 class="text-3xl font-semibold">
                             Designed for operators who are actively applying.
                         </h2>
                         <p class="text-base text-[#545451] dark:text-[#b3b3ae]">
-                            The pricing stays flat so you can iterate quickly without worrying about metered costs.
+                            The pricing stays flat so you can iterate quickly
+                            without worrying about metered costs.
                         </p>
                     </div>
                     <div class="grid gap-6 md:grid-cols-3">
@@ -261,10 +308,14 @@ const sellingPoints = [
                             :key="point.title"
                             class="rounded-2xl border border-[#deded8] bg-white/90 p-6 text-left shadow-sm dark:border-[#1f2937] dark:bg-[#0b1120]/80"
                         >
-                            <h3 class="text-lg font-semibold text-[#0f172a] dark:text-white">
+                            <h3
+                                class="text-lg font-semibold text-[#0f172a] dark:text-white"
+                            >
                                 {{ point.title }}
                             </h3>
-                            <p class="mt-2 text-sm leading-relaxed text-[#545451] dark:text-[#b3b3ae]">
+                            <p
+                                class="mt-2 text-sm leading-relaxed text-[#545451] dark:text-[#b3b3ae]"
+                            >
                                 {{ point.description }}
                             </p>
                         </article>

@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { useBilling } from '@/composables/useBilling';
 import AppLayout from '@/layouts/AppLayout.vue';
 import SettingsLayout from '@/layouts/settings/Layout.vue';
-import { useBilling } from '@/composables/useBilling';
 import billingRoutes from '@/routes/billing';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link } from '@inertiajs/vue3';
@@ -28,13 +28,8 @@ const breadcrumbItems: BreadcrumbItem[] = [
     },
 ];
 
-const {
-    billing,
-    hasSubscription,
-    usageFeatures,
-    planPrice,
-    planName,
-} = useBilling();
+const { billing, hasSubscription, usageFeatures, planPrice, planName } =
+    useBilling();
 
 const plan = computed(() => billing.value.plan);
 const subscription = computed(() => billing.value.subscription);
@@ -78,30 +73,43 @@ const primaryAction = computed(() =>
 
         <SettingsLayout>
             <section class="space-y-8">
-                <div class="rounded-2xl border border-border/60 bg-card/80 p-6 shadow-sm">
-                    <div class="flex flex-wrap items-start justify-between gap-4">
+                <div
+                    class="rounded-2xl border border-border/60 bg-card/80 p-6 shadow-sm"
+                >
+                    <div
+                        class="flex flex-wrap items-start justify-between gap-4"
+                    >
                         <div class="space-y-2">
-                            <p class="text-xs font-semibold uppercase tracking-wide text-primary">
+                            <p
+                                class="text-xs font-semibold tracking-wide text-primary uppercase"
+                            >
                                 Current plan
                             </p>
                             <h1 class="text-2xl font-semibold text-foreground">
                                 {{ planName }}
                             </h1>
                             <p class="text-sm text-muted-foreground">
-                                {{ plan?.description || 'Unlimited tailoring, research, and uploads.' }}
+                                {{
+                                    plan?.description ||
+                                    'Unlimited tailoring, research, and uploads.'
+                                }}
                             </p>
                             <p class="text-sm font-medium text-foreground">
                                 {{ planPriceLabel }}
                             </p>
                             <p class="text-xs text-muted-foreground">
-                                Credit card charges show as "SAMUELDIGITALWORKSCOM".
+                                Credit card charges show as
+                                "SAMUELDIGITALWORKSCOM".
                             </p>
                         </div>
                         <div class="flex flex-col items-end gap-3">
                             <Badge :variant="statusVariant">
                                 {{ statusLabel }}
                             </Badge>
-                            <div v-if="renewalLabel" class="text-xs text-muted-foreground">
+                            <div
+                                v-if="renewalLabel"
+                                class="text-xs text-muted-foreground"
+                            >
                                 Renews {{ renewalLabel }}
                             </div>
                             <div class="flex flex-wrap gap-3">
@@ -120,14 +128,19 @@ const primaryAction = computed(() =>
                     </div>
                 </div>
 
-                <div class="rounded-2xl border border-border/60 bg-card/80 p-6 shadow-sm">
-                    <header class="flex flex-wrap items-center justify-between gap-3">
+                <div
+                    class="rounded-2xl border border-border/60 bg-card/80 p-6 shadow-sm"
+                >
+                    <header
+                        class="flex flex-wrap items-center justify-between gap-3"
+                    >
                         <div>
                             <h2 class="text-lg font-semibold text-foreground">
                                 Usage overview
                             </h2>
                             <p class="text-sm text-muted-foreground">
-                                Preview how many free actions remain before upgrading.
+                                Preview how many free actions remain before
+                                upgrading.
                             </p>
                         </div>
                     </header>
@@ -137,10 +150,14 @@ const primaryAction = computed(() =>
                             :key="feature.key"
                             class="rounded-xl border border-border/60 bg-background/80 p-4"
                         >
-                            <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                            <p
+                                class="text-xs font-semibold tracking-wide text-muted-foreground uppercase"
+                            >
                                 {{ feature.label }}
                             </p>
-                            <p class="mt-2 text-2xl font-semibold text-foreground">
+                            <p
+                                class="mt-2 text-2xl font-semibold text-foreground"
+                            >
                                 <template v-if="feature.limit === null">
                                     Unlimited
                                 </template>
@@ -160,14 +177,19 @@ const primaryAction = computed(() =>
                     </div>
                 </div>
 
-                <div class="rounded-2xl border border-border/60 bg-card/80 p-6 shadow-sm">
-                    <header class="flex flex-wrap items-center justify-between gap-3">
+                <div
+                    class="rounded-2xl border border-border/60 bg-card/80 p-6 shadow-sm"
+                >
+                    <header
+                        class="flex flex-wrap items-center justify-between gap-3"
+                    >
                         <div>
                             <h2 class="text-lg font-semibold text-foreground">
                                 Invoices
                             </h2>
                             <p class="text-sm text-muted-foreground">
-                                Downloads become available after your first payment.
+                                Downloads become available after your first
+                                payment.
                             </p>
                         </div>
                     </header>
@@ -182,11 +204,19 @@ const primaryAction = computed(() =>
                                     Invoice {{ invoice.number ?? invoice.id }}
                                 </p>
                                 <p class="text-xs text-muted-foreground">
-                                    {{ invoice.date ? renewalFormatter.format(new Date(invoice.date)) : 'Pending' }}
+                                    {{
+                                        invoice.date
+                                            ? renewalFormatter.format(
+                                                  new Date(invoice.date),
+                                              )
+                                            : 'Pending'
+                                    }}
                                 </p>
                             </div>
                             <div class="flex items-center gap-2">
-                                <span class="text-sm font-medium text-foreground">
+                                <span
+                                    class="text-sm font-medium text-foreground"
+                                >
                                     {{ invoice.total ?? '—' }}
                                 </span>
                                 <a
@@ -205,7 +235,8 @@ const primaryAction = computed(() =>
                         v-else
                         class="mt-5 rounded-xl border border-dashed border-border/60 bg-background/80 p-6 text-sm text-muted-foreground"
                     >
-                        No invoices yet. Charges will appear here after you subscribe.
+                        No invoices yet. Charges will appear here after you
+                        subscribe.
                     </div>
                 </div>
             </section>

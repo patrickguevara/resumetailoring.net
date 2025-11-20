@@ -107,61 +107,59 @@ const trialFeatureSummaries = computed(() =>
 
 <template>
     <Sidebar collapsible="icon" variant="inset">
-    <SidebarHeader
-        class="gap-4 border-b border-sidebar-border/60 bg-gradient-to-br from-sidebar-background via-sidebar-background/90 to-accent/20 p-4"
-    >
+        <SidebarHeader
+            class="from-sidebar-background via-sidebar-background/90 gap-4 border-b border-sidebar-border/60 bg-gradient-to-br to-accent/20 p-4"
+        >
             <SidebarMenu>
                 <SidebarMenuItem>
                     <SidebarMenuButton size="lg" as-child>
-                    <Link :href="dashboard()">
-                        <AppLogo />
-                    </Link>
-                </SidebarMenuButton>
-            </SidebarMenuItem>
-        </SidebarMenu>
-        <div
-            class="rounded-lg border border-sidebar-border/70 bg-sidebar/80 px-4 py-3 text-xs text-sidebar-foreground shadow-sm group-data-[state=collapsed]:hidden"
-        >
-            <p class="text-sm font-semibold text-sidebar-foreground">
-                Tailor smarter
-            </p>
-            <p class="mt-1 text-xs text-sidebar-foreground/70">
-                Keep your resumes, jobs, and research in one workspace.
-            </p>
-        </div>
-        <div
-            v-if="showTrialReminder"
-            class="rounded-lg border border-primary/30 bg-primary/10 px-4 py-3 text-xs text-primary shadow-sm group-data-[state=collapsed]:hidden"
-        >
-            <p class="text-[11px] font-semibold uppercase tracking-wide text-primary/90">
-                Free preview
-            </p>
-            <p class="mt-1 text-sm font-semibold text-sidebar-foreground">
-                {{ trialHeadline }}
-            </p>
-            <ul class="mt-2 space-y-1 text-xs text-primary/80">
-                <li
-                    v-for="feature in trialFeatureSummaries"
-                    :key="feature.key"
-                    class="flex items-center justify-between gap-3"
-                >
-                    <span>{{ feature.label }}</span>
-                    <span class="font-semibold text-primary">
-                        {{ feature.summary }}
-                    </span>
-                </li>
-            </ul>
-            <Button
-                size="sm"
-                class="mt-3 w-full justify-center"
-                as-child
+                        <Link :href="dashboard()">
+                            <AppLogo />
+                        </Link>
+                    </SidebarMenuButton>
+                </SidebarMenuItem>
+            </SidebarMenu>
+            <div
+                class="rounded-lg border border-sidebar-border/70 bg-sidebar/80 px-4 py-3 text-xs text-sidebar-foreground shadow-sm group-data-[state=collapsed]:hidden"
             >
-                <Link :href="billingRoutes.edit.url()">
-                    Upgrade · {{ planPriceLabel }}
-                </Link>
-            </Button>
-        </div>
-    </SidebarHeader>
+                <p class="text-sm font-semibold text-sidebar-foreground">
+                    Tailor smarter
+                </p>
+                <p class="mt-1 text-xs text-sidebar-foreground/70">
+                    Keep your resumes, jobs, and research in one workspace.
+                </p>
+            </div>
+            <div
+                v-if="showTrialReminder"
+                class="rounded-lg border border-primary/30 bg-primary/10 px-4 py-3 text-xs text-primary shadow-sm group-data-[state=collapsed]:hidden"
+            >
+                <p
+                    class="text-[11px] font-semibold tracking-wide text-primary/90 uppercase"
+                >
+                    Free preview
+                </p>
+                <p class="mt-1 text-sm font-semibold text-sidebar-foreground">
+                    {{ trialHeadline }}
+                </p>
+                <ul class="mt-2 space-y-1 text-xs text-primary/80">
+                    <li
+                        v-for="feature in trialFeatureSummaries"
+                        :key="feature.key"
+                        class="flex items-center justify-between gap-3"
+                    >
+                        <span>{{ feature.label }}</span>
+                        <span class="font-semibold text-primary">
+                            {{ feature.summary }}
+                        </span>
+                    </li>
+                </ul>
+                <Button size="sm" class="mt-3 w-full justify-center" as-child>
+                    <Link :href="billingRoutes.edit.url()">
+                        Upgrade · {{ planPriceLabel }}
+                    </Link>
+                </Button>
+            </div>
+        </SidebarHeader>
 
         <SidebarContent>
             <NavMain :items="mainNavItems" />

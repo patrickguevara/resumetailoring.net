@@ -81,10 +81,10 @@ const rendered = computed(() =>
         </div>
         <pre
             v-else
-            class="overflow-auto whitespace-pre-wrap break-words rounded-md border border-border/60 bg-muted/40 p-4 text-sm leading-relaxed text-foreground/90 dark:border-border/40"
+            class="overflow-auto rounded-md border border-border/60 bg-muted/40 p-4 text-sm leading-relaxed break-words whitespace-pre-wrap text-foreground/90 dark:border-border/40"
             :class="cn(contentClass)"
+            >{{ content }}
+</pre
         >
-{{ content }}
-</pre>
     </div>
 </template>

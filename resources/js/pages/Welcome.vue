@@ -2,7 +2,7 @@
 import { Head, Link } from '@inertiajs/vue3';
 
 import AppLogoIcon from '@/components/AppLogoIcon.vue';
-import { dashboard, home, login, register, pricing } from '@/routes';
+import { dashboard, home, login, pricing, register } from '@/routes';
 
 const currentYear = new Date().getFullYear();
 
@@ -11,7 +11,7 @@ const features = [
         title: 'Evaluate resumes with one click',
         description:
             'Upload your resume and a job description to get alignment feedback with actionable suggestions.',
-        highlight: 'Uncover your resume\'s strengths and weaknesses.',
+        highlight: "Uncover your resume's strengths and weaknesses.",
     },
     {
         title: 'Insightful company research',
@@ -50,8 +50,7 @@ const steps = [
 
 const testimonials = [
     {
-        quote:
-            'I was already doing this in a disjointed way, but Resume Tailoring brings it all together in a single dashboard.',
+        quote: 'I was already doing this in a disjointed way, but Resume Tailoring brings it all together in a single dashboard.',
         name: 'Patrick G.',
         role: 'Creator, Resume Tailoring',
     },
@@ -76,16 +75,18 @@ const testimonials = [
             ></div>
         </div>
 
-        <div class="relative mx-auto flex max-w-6xl flex-col px-6 pb-24 pt-8">
+        <div class="relative mx-auto flex max-w-6xl flex-col px-6 pt-8 pb-24">
             <header class="flex items-center justify-between py-4">
                 <Link :href="home()" class="flex items-center gap-3">
                     <AppLogoIcon class="size-10" />
-                    <span class="text-base font-semibold leading-tight">
+                    <span class="text-base leading-tight font-semibold">
                         Resume Tailoring
                     </span>
                 </Link>
 
-                <nav class="hidden items-center gap-8 text-sm font-medium md:flex">
+                <nav
+                    class="hidden items-center gap-8 text-sm font-medium md:flex"
+                >
                     <!-- <a href="#features" class="transition hover:text-[#0f172a] dark:hover:text-white">
                         Features
                     </a>
@@ -120,23 +121,35 @@ const testimonials = [
                         :href="$page.props.auth.user ? dashboard() : register()"
                         class="rounded-md bg-[#0f172a] px-3 py-2 text-sm font-medium text-white transition hover:bg-[#0c1421] dark:bg-[#38bdf8] dark:text-[#0b1120] dark:hover:bg-[#0ea5e9]"
                     >
-                        {{ $page.props.auth.user ? 'Dashboard' : 'Try for free' }}
+                        {{
+                            $page.props.auth.user ? 'Dashboard' : 'Try for free'
+                        }}
                     </Link>
                 </div>
             </header>
 
             <main class="flex flex-1 flex-col">
-                <section class="grid gap-12 py-16 md:grid-cols-[1fr,0.9fr] md:items-center">
+                <section
+                    class="grid gap-12 py-16 md:grid-cols-[1fr,0.9fr] md:items-center"
+                >
                     <div class="space-y-6">
                         <!-- <div class="inline-flex items-center gap-3 rounded-full border border-[#d0d0cd] bg-white/70 px-4 py-2 text-xs font-semibold uppercase tracking-[0.22em] text-[#6b6b68] dark:border-[#1f2937] dark:bg-[#111827] dark:text-[#9ca3af]">
                             <span class="size-2 rounded-full bg-[#22c55e]"></span>
                             Tailor resumes in minutes
                         </div> -->
-                        <h1 class="text-4xl font-semibold leading-tight sm:text-5xl lg:text-6xl">
-                            Tailor every resume to the job without rewriting from scratch.
+                        <h1
+                            class="text-4xl leading-tight font-semibold sm:text-5xl lg:text-6xl"
+                        >
+                            Tailor every resume to the job without rewriting
+                            from scratch.
                         </h1>
-                        <p class="text-lg leading-relaxed text-[#545451] dark:text-[#b3b3ae]">
-                            Resume Tailor evaluates your resume against any job description and provides actionable feedback and performs company research to help you craft the perfect resume and prepare for your interview.
+                        <p
+                            class="text-lg leading-relaxed text-[#545451] dark:text-[#b3b3ae]"
+                        >
+                            Resume Tailor evaluates your resume against any job
+                            description and provides actionable feedback and
+                            performs company research to help you craft the
+                            perfect resume and prepare for your interview.
                         </p>
                         <div class="flex flex-wrap items-center gap-4">
                             <Link
@@ -178,46 +191,76 @@ const testimonials = [
                     </div>
                     <div class="relative">
                         <div
-                            class="absolute -left-6 top-10 h-[420px] w-[420px] rounded-full bg-gradient-to-tr from-[#4ade80]/40 via-[#38bdf8]/40 to-[#facc15]/30 blur-3xl opacity-50 dark:from-[#34d399]/10 dark:via-[#38bdf8]/10 dark:to-[#f472b6]/10"
+                            class="absolute top-10 -left-6 h-[420px] w-[420px] rounded-full bg-gradient-to-tr from-[#4ade80]/40 via-[#38bdf8]/40 to-[#facc15]/30 opacity-50 blur-3xl dark:from-[#34d399]/10 dark:via-[#38bdf8]/10 dark:to-[#f472b6]/10"
                         ></div>
                         <div
                             class="relative overflow-hidden rounded-2xl border border-[#ebeae6] bg-white shadow-xl shadow-[#0f172a0d] dark:border-[#1f2937] dark:bg-[#111827]"
                         >
-                            <div class="border-b border-[#ebeae6] bg-[#f3f4f6] px-6 py-4 text-sm font-semibold text-[#111827] dark:border-[#1f2937] dark:bg-[#0f172a] dark:text-[#e5e7eb]">
+                            <div
+                                class="border-b border-[#ebeae6] bg-[#f3f4f6] px-6 py-4 text-sm font-semibold text-[#111827] dark:border-[#1f2937] dark:bg-[#0f172a] dark:text-[#e5e7eb]"
+                            >
                                 Tailored version preview
                             </div>
-                            <div class="space-y-6 px-6 py-8 text-sm leading-relaxed">
+                            <div
+                                class="space-y-6 px-6 py-8 text-sm leading-relaxed"
+                            >
                                 <div>
-                                    <div class="flex items-center justify-between text-xs uppercase tracking-[0.18em] text-[#6b6b68] dark:text-[#9ca3af]">
+                                    <div
+                                        class="flex items-center justify-between text-xs tracking-[0.18em] text-[#6b6b68] uppercase dark:text-[#9ca3af]"
+                                    >
                                         Updated
                                     </div>
-                                    <h2 class="mt-3 text-lg font-semibold">Senior Product Designer · Figma</h2>
-                                    <p class="mt-3 text-[#545451] dark:text-[#d1d5db]">
-                                        Reframed collaboration wins, expanded AI initiatives, and raised priority metrics highlighted in the job specification.
+                                    <h2 class="mt-3 text-lg font-semibold">
+                                        Senior Product Designer · Figma
+                                    </h2>
+                                    <p
+                                        class="mt-3 text-[#545451] dark:text-[#d1d5db]"
+                                    >
+                                        Reframed collaboration wins, expanded AI
+                                        initiatives, and raised priority metrics
+                                        highlighted in the job specification.
                                     </p>
                                 </div>
-                                <div class="space-y-3 rounded-xl border border-[#ebeae6] bg-[#f9f9f7] p-5 text-sm dark:border-[#1f2937] dark:bg-[#0f172a]/30">
-                                    <p class="font-medium text-[#0f172a] dark:text-white">
+                                <div
+                                    class="space-y-3 rounded-xl border border-[#ebeae6] bg-[#f9f9f7] p-5 text-sm dark:border-[#1f2937] dark:bg-[#0f172a]/30"
+                                >
+                                    <p
+                                        class="font-medium text-[#0f172a] dark:text-white"
+                                    >
                                         Suggested updates
                                     </p>
-                                    <ul class="space-y-3 text-[#545451] dark:text-[#d1d5db]">
+                                    <ul
+                                        class="space-y-3 text-[#545451] dark:text-[#d1d5db]"
+                                    >
                                         <li>
-                                            <span class="mr-2 inline-flex size-5 items-center justify-center rounded-full bg-[#22c55e]/10 text-[#15803d] dark:bg-[#22c55e]/20 dark:text-[#86efac]">
+                                            <span
+                                                class="mr-2 inline-flex size-5 items-center justify-center rounded-full bg-[#22c55e]/10 text-[#15803d] dark:bg-[#22c55e]/20 dark:text-[#86efac]"
+                                            >
                                                 +
                                             </span>
-                                            Align bullet points with product-led growth metrics highlighted in the role.
+                                            Align bullet points with product-led
+                                            growth metrics highlighted in the
+                                            role.
                                         </li>
                                         <li>
-                                            <span class="mr-2 inline-flex size-5 items-center justify-center rounded-full bg-[#38bdf8]/10 text-[#0369a1] dark:bg-[#38bdf8]/20 dark:text-[#bae6fd]">
+                                            <span
+                                                class="mr-2 inline-flex size-5 items-center justify-center rounded-full bg-[#38bdf8]/10 text-[#0369a1] dark:bg-[#38bdf8]/20 dark:text-[#bae6fd]"
+                                            >
                                                 +
                                             </span>
-                                            Surface collaboration with data science partners to match culture notes.
+                                            Surface collaboration with data
+                                            science partners to match culture
+                                            notes.
                                         </li>
                                         <li>
-                                            <span class="mr-2 inline-flex size-5 items-center justify-center rounded-full bg-[#f97316]/10 text-[#c2410c] dark:bg-[#f97316]/20 dark:text-[#fdba74]">
+                                            <span
+                                                class="mr-2 inline-flex size-5 items-center justify-center rounded-full bg-[#f97316]/10 text-[#c2410c] dark:bg-[#f97316]/20 dark:text-[#fdba74]"
+                                            >
                                                 ✱
                                             </span>
-                                            Replace generic “improved conversion” metrics with the 28% uplift from experimentation.
+                                            Replace generic “improved
+                                            conversion” metrics with the 28%
+                                            uplift from experimentation.
                                         </li>
                                     </ul>
                                 </div>
@@ -232,7 +275,9 @@ const testimonials = [
                             Everything you need to align and prepare.
                         </h2>
                         <p class="text-lg text-[#545451] dark:text-[#b3b3ae]">
-                            Resume Tailor was built to automate the way I prepare, research, and align to career opportunities.
+                            Resume Tailor was built to automate the way I
+                            prepare, research, and align to career
+                            opportunities.
                         </p>
                     </div>
 
@@ -242,13 +287,19 @@ const testimonials = [
                             :key="feature.title"
                             class="flex flex-col rounded-2xl border border-[#ebeae6] bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:shadow-lg hover:shadow-[#0f172a0d] dark:border-[#1f2937] dark:bg-[#111827]"
                         >
-                            <h3 class="text-xl font-semibold text-[#0f172a] dark:text-white">
+                            <h3
+                                class="text-xl font-semibold text-[#0f172a] dark:text-white"
+                            >
                                 {{ feature.title }}
                             </h3>
-                            <p class="mt-4 text-sm leading-relaxed text-[#545451] dark:text-[#d1d5db]">
+                            <p
+                                class="mt-4 text-sm leading-relaxed text-[#545451] dark:text-[#d1d5db]"
+                            >
                                 {{ feature.description }}
                             </p>
-                            <p class="mt-5 text-xs font-semibold uppercase tracking-[0.22em] text-[#6b6b68] dark:text-[#9ca3af]">
+                            <p
+                                class="mt-5 text-xs font-semibold tracking-[0.22em] text-[#6b6b68] uppercase dark:text-[#9ca3af]"
+                            >
                                 {{ feature.highlight }}
                             </p>
                         </article>
@@ -264,7 +315,9 @@ const testimonials = [
                             Tailoring should feel effortless.
                         </h2>
                         <p class="text-lg text-[#545451] dark:text-[#d1d5db]">
-                            Gone are the days of dozens of tabs and endless context switching. Resume Tailoring streamlines the entire process into three simple steps.
+                            Gone are the days of dozens of tabs and endless
+                            context switching. Resume Tailoring streamlines the
+                            entire process into three simple steps.
                         </p>
                     </div>
 
@@ -274,13 +327,19 @@ const testimonials = [
                             :key="step.title"
                             class="flex flex-col gap-4 rounded-2xl border border-dashed border-[#d0d0cd] bg-white/80 p-6 text-sm shadow-sm dark:border-[#1f2937] dark:bg-transparent"
                         >
-                            <span class="inline-flex size-10 items-center justify-center rounded-full bg-[#0f172a] text-base font-semibold text-white dark:bg-[#38bdf8] dark:text-[#0b1120]">
+                            <span
+                                class="inline-flex size-10 items-center justify-center rounded-full bg-[#0f172a] text-base font-semibold text-white dark:bg-[#38bdf8] dark:text-[#0b1120]"
+                            >
                                 {{ index + 1 }}
                             </span>
-                            <h3 class="text-lg font-semibold text-[#0f172a] dark:text-white">
+                            <h3
+                                class="text-lg font-semibold text-[#0f172a] dark:text-white"
+                            >
                                 {{ step.title }}
                             </h3>
-                            <p class="leading-relaxed text-[#545451] dark:text-[#d1d5db]">
+                            <p
+                                class="leading-relaxed text-[#545451] dark:text-[#d1d5db]"
+                            >
                                 {{ step.copy }}
                             </p>
                         </li>
@@ -288,13 +347,20 @@ const testimonials = [
                 </section>
 
                 <section id="testimonials" class="space-y-12 py-20">
-                    <div class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+                    <div
+                        class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between"
+                    >
                         <div class="max-w-3xl space-y-3">
                             <h2 class="text-3xl font-semibold sm:text-4xl">
                                 Built to help me during my job search.
                             </h2>
-                            <p class="text-lg text-[#545451] dark:text-[#b3b3ae]">
-                                Resume Tailoring was built to solve my own frustrations with tailoring resumes for each job application. Here's what early users have to say.
+                            <p
+                                class="text-lg text-[#545451] dark:text-[#b3b3ae]"
+                            >
+                                Resume Tailoring was built to solve my own
+                                frustrations with tailoring resumes for each job
+                                application. Here's what early users have to
+                                say.
                             </p>
                         </div>
                     </div>
@@ -305,12 +371,18 @@ const testimonials = [
                             :key="testimonial.name"
                             class="flex h-full flex-col justify-between gap-6 rounded-2xl border border-[#ebeae6] bg-white p-8 text-left shadow-sm dark:border-[#1f2937] dark:bg-[#111827]"
                         >
-                            <p class="text-lg leading-relaxed text-[#1b1b18] dark:text-[#f9fafb]">
+                            <p
+                                class="text-lg leading-relaxed text-[#1b1b18] dark:text-[#f9fafb]"
+                            >
                                 “{{ testimonial.quote }}”
                             </p>
-                            <footer class="text-sm font-medium text-[#545451] dark:text-[#d1d5db]">
+                            <footer
+                                class="text-sm font-medium text-[#545451] dark:text-[#d1d5db]"
+                            >
                                 {{ testimonial.name }}
-                                <span class="font-normal text-[#6b6b68] dark:text-[#9ca3af]">
+                                <span
+                                    class="font-normal text-[#6b6b68] dark:text-[#9ca3af]"
+                                >
                                     · {{ testimonial.role }}
                                 </span>
                             </footer>
@@ -322,38 +394,71 @@ const testimonials = [
                     id="cta"
                     class="mt-8 overflow-hidden rounded-3xl border border-[#ebeae6] bg-[#0f172a] px-8 py-12 text-white shadow-xl shadow-[#0f172a14] dark:border-[#374151] dark:bg-[#111827]"
                 >
-                    <div class="flex flex-col gap-10 lg:flex-row lg:items-center lg:justify-between">
+                    <div
+                        class="flex flex-col gap-10 lg:flex-row lg:items-center lg:justify-between"
+                    >
                         <div class="max-w-2xl space-y-4">
-                            <p class="text-xs font-semibold uppercase tracking-[0.28em] text-white/60">
+                            <p
+                                class="text-xs font-semibold tracking-[0.28em] text-white/60 uppercase"
+                            >
                                 Try it out
                             </p>
-                            <h2 class="text-3xl font-semibold leading-tight sm:text-4xl">
-                                Ready to tailor your next application in minutes?
+                            <h2
+                                class="text-3xl leading-tight font-semibold sm:text-4xl"
+                            >
+                                Ready to tailor your next application in
+                                minutes?
                             </h2>
                             <p class="text-lg text-white/80">
-                                Upload a resume, drop in a job description, and let Resume Tailoring evaluate how well you match.
+                                Upload a resume, drop in a job description, and
+                                let Resume Tailoring evaluate how well you
+                                match.
                             </p>
                         </div>
                         <div class="flex flex-col gap-4 sm:flex-row">
                             <Link
-                                :href="$page.props.auth.user ? dashboard() : register()"
+                                :href="
+                                    $page.props.auth.user
+                                        ? dashboard()
+                                        : register()
+                                "
                                 class="inline-flex items-center justify-center rounded-md bg-white px-6 py-3 text-base font-semibold text-[#0f172a] transition hover:bg-[#f3f4f6]"
                             >
-                                {{ $page.props.auth.user ? 'Back to dashboard' : 'Start tailoring now' }}
+                                {{
+                                    $page.props.auth.user
+                                        ? 'Back to dashboard'
+                                        : 'Start tailoring now'
+                                }}
                             </Link>
                         </div>
                     </div>
                 </section>
             </main>
 
-            <footer class="mt-16 border-t border-[#ebeae6] pt-8 text-xs text-[#6b6b68] dark:border-[#1f2937] dark:text-[#9ca3af]">
-                <div class="flex flex-col items-start justify-between gap-4 sm:flex-row">
-                    <p>© {{ currentYear }} Resume Tailoring. Crafted for purposeful applicants. Site by <a href="https://samueldigitalworks.com" target="_blank">Samuel Digital Works</a>.</p>
+            <footer
+                class="mt-16 border-t border-[#ebeae6] pt-8 text-xs text-[#6b6b68] dark:border-[#1f2937] dark:text-[#9ca3af]"
+            >
+                <div
+                    class="flex flex-col items-start justify-between gap-4 sm:flex-row"
+                >
+                    <p>
+                        © {{ currentYear }} Resume Tailoring. Crafted for
+                        purposeful applicants. Site by
+                        <a href="https://samueldigitalworks.com" target="_blank"
+                            >Samuel Digital Works</a
+                        >.
+                    </p>
                     <div class="flex gap-6">
-                        <Link href="/privacy" class="hover:text-[#0f172a] dark:hover:text-white">
+                        <Link
+                            href="/privacy"
+                            class="hover:text-[#0f172a] dark:hover:text-white"
+                        >
                             Privacy
                         </Link>
-                        <Link href="/terms" class="hover:text-[#0f172a] dark:hover:text-white">
+                        <Link
+                            href="/terms"
+                            class="hover:text-[#0f172a] dark:hover:text-white"
+                        >
                             Terms
                         </Link>
                     </div>

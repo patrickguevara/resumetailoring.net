@@ -1,7 +1,7 @@
 <script setup lang="ts">
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import AppLayout from '@/layouts/AppLayout.vue';
 import type { BreadcrumbItem } from '@/types';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Head } from '@inertiajs/vue3';
 import { computed } from 'vue';
 
@@ -74,24 +74,33 @@ const clampShare = (value: number) => Math.min(Math.max(value ?? 0, 0), 100);
 
         <div class="space-y-8">
             <div class="space-y-2">
-                <p class="text-sm font-medium text-primary">Internal dashboard</p>
-                <h1 class="text-3xl font-semibold tracking-tight text-foreground">
+                <p class="text-sm font-medium text-primary">
+                    Internal dashboard
+                </p>
+                <h1
+                    class="text-3xl font-semibold tracking-tight text-foreground"
+                >
                     Admin overview
                 </h1>
                 <p class="text-muted-foreground">
-                    Monitor signups, subscribers, and how people use key resume tools.
+                    Monitor signups, subscribers, and how people use key resume
+                    tools.
                 </p>
             </div>
 
             <div class="grid gap-4 md:grid-cols-3">
                 <Card v-for="card in cards" :key="card.key">
                     <CardHeader class="space-y-1 pb-2">
-                        <CardTitle class="text-sm font-medium text-muted-foreground">
+                        <CardTitle
+                            class="text-sm font-medium text-muted-foreground"
+                        >
                             {{ card.label }}
                         </CardTitle>
                     </CardHeader>
                     <CardContent class="space-y-1">
-                        <p class="text-3xl font-semibold tracking-tight tabular-nums">
+                        <p
+                            class="text-3xl font-semibold tracking-tight tabular-nums"
+                        >
                             {{ formatCardValue(card) }}
                         </p>
                         <p
@@ -119,10 +128,14 @@ const clampShare = (value: number) => Math.min(Math.max(value ?? 0, 0), 100);
                                 :key="item.key"
                                 class="rounded-lg border p-4"
                             >
-                                <dt class="text-sm font-medium text-muted-foreground">
+                                <dt
+                                    class="text-sm font-medium text-muted-foreground"
+                                >
                                     {{ item.label }}
                                 </dt>
-                                <dd class="mt-2 text-2xl font-semibold tracking-tight tabular-nums">
+                                <dd
+                                    class="mt-2 text-2xl font-semibold tracking-tight tabular-nums"
+                                >
                                     {{ formatNumber(item.value) }}
                                 </dd>
                                 <p
@@ -140,8 +153,9 @@ const clampShare = (value: number) => Math.min(Math.max(value ?? 0, 0), 100);
                     <CardHeader>
                         <CardTitle>Common actions</CardTitle>
                         <p class="text-sm text-muted-foreground">
-                            Totals, average per user, and share of tracked actions
-                            ({{ formatNumber(trackedActions) }} overall).
+                            Totals, average per user, and share of tracked
+                            actions ({{ formatNumber(trackedActions) }}
+                            overall).
                         </p>
                     </CardHeader>
                     <CardContent class="space-y-4">
@@ -164,32 +178,38 @@ const clampShare = (value: number) => Math.min(Math.max(value ?? 0, 0), 100);
                             <div class="grid gap-4 sm:grid-cols-3">
                                 <div>
                                     <p
-                                        class="text-xs font-medium uppercase tracking-wide text-muted-foreground"
+                                        class="text-xs font-medium tracking-wide text-muted-foreground uppercase"
                                     >
                                         Total
                                     </p>
-                                    <p class="text-lg font-semibold tabular-nums">
+                                    <p
+                                        class="text-lg font-semibold tabular-nums"
+                                    >
                                         {{ formatNumber(action.count) }}
                                     </p>
                                 </div>
                                 <div>
                                     <p
-                                        class="text-xs font-medium uppercase tracking-wide text-muted-foreground"
+                                        class="text-xs font-medium tracking-wide text-muted-foreground uppercase"
                                     >
                                         Avg / user
                                     </p>
-                                    <p class="text-lg font-semibold tabular-nums">
+                                    <p
+                                        class="text-lg font-semibold tabular-nums"
+                                    >
                                         {{ formatDecimal(action.avg_per_user) }}
                                     </p>
                                 </div>
                                 <div>
                                     <p
-                                        class="text-xs font-medium uppercase tracking-wide text-muted-foreground"
+                                        class="text-xs font-medium tracking-wide text-muted-foreground uppercase"
                                     >
                                         Share
                                     </p>
                                     <div class="flex items-center gap-3">
-                                        <div class="h-2 flex-1 rounded-full bg-muted">
+                                        <div
+                                            class="h-2 flex-1 rounded-full bg-muted"
+                                        >
                                             <div
                                                 class="h-2 rounded-full bg-primary transition-all"
                                                 :style="{
@@ -197,7 +217,9 @@ const clampShare = (value: number) => Math.min(Math.max(value ?? 0, 0), 100);
                                                 }"
                                             />
                                         </div>
-                                        <span class="text-sm font-medium tabular-nums">
+                                        <span
+                                            class="text-sm font-medium tabular-nums"
+                                        >
                                             {{ formatDecimal(action.share) }}%
                                         </span>
                                     </div>
