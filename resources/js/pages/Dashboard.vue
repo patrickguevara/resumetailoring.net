@@ -1,17 +1,16 @@
 <script setup lang="ts">
-import AppLayout from '@/layouts/AppLayout.vue';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useBilling } from '@/composables/useBilling';
+import AppLayout from '@/layouts/AppLayout.vue';
 import { dashboard } from '@/routes';
 import billingRoutes from '@/routes/billing';
 import evaluationRoutes from '@/routes/evaluations';
 import jobsRoutes from '@/routes/jobs';
 import resumeRoutes from '@/routes/resumes';
 import type { BreadcrumbItem } from '@/types';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Head, Link } from '@inertiajs/vue3';
-import { computed } from 'vue';
 import {
     Briefcase,
     CalendarClock,
@@ -19,6 +18,7 @@ import {
     ListChecks,
     Sparkles,
 } from 'lucide-vue-next';
+import { computed } from 'vue';
 
 interface DashboardSummary {
     resumes_count: number;
@@ -88,9 +88,6 @@ const breadcrumbs: BreadcrumbItem[] = [
 const numberFormatter = new Intl.NumberFormat(undefined, {
     maximumFractionDigits: 0,
 });
-const dateFormatter = new Intl.DateTimeFormat(undefined, {
-    dateStyle: 'medium',
-});
 const dateTimeFormatter = new Intl.DateTimeFormat(undefined, {
     dateStyle: 'medium',
     timeStyle: 'short',
@@ -98,15 +95,8 @@ const dateTimeFormatter = new Intl.DateTimeFormat(undefined, {
 
 const formatNumber = (value: number) => numberFormatter.format(value);
 const formatPlural = (count: number, singular: string, plural?: string) => {
-    const noun = count === 1 ? singular : plural ?? `${singular}s`;
+    const noun = count === 1 ? singular : (plural ?? `${singular}s`);
     return `${formatNumber(count)} ${noun}`;
-};
-const formatDate = (value?: string | null) => {
-    if (!value) {
-        return null;
-    }
-
-    return dateFormatter.format(new Date(value));
 };
 const formatDateTime = (value?: string | null) => {
     if (!value) {
@@ -117,7 +107,9 @@ const formatDateTime = (value?: string | null) => {
 };
 
 const lastActivityLabel = computed(
-    () => formatDateTime(props.summary.last_activity_at) ?? 'No activity recorded yet',
+    () =>
+        formatDateTime(props.summary.last_activity_at) ??
+        'No activity recorded yet',
 );
 
 const summaryItems = computed(() => [
@@ -135,8 +127,7 @@ const summaryItems = computed(() => [
         key: 'jobs',
         label: 'Jobs',
         count: props.summary.jobs_count,
-        helper:
-            props.summary.jobs_count === 1 ? 'Tracked job' : 'Tracked jobs',
+        helper: props.summary.jobs_count === 1 ? 'Tracked job' : 'Tracked jobs',
         icon: Briefcase,
     },
     {
@@ -198,12 +189,7 @@ const recentResumes = computed(() => props.recent.resumes ?? []);
 const recentJobs = computed(() => props.recent.jobs ?? []);
 const recentEvaluations = computed(() => props.recent.evaluations ?? []);
 
-const {
-    hasSubscription,
-    usageFeatures,
-    planPrice,
-    planName,
-} = useBilling();
+const { hasSubscription, usageFeatures, planPrice, planName } = useBilling();
 const limitedFeatures = computed(() =>
     usageFeatures.value.filter((feature) => feature.limit !== null),
 );
@@ -214,10 +200,7 @@ const trialFeatureList = computed(() =>
     limitedFeatures.value.map((feature) => ({
         key: feature.key,
         label: feature.label,
-        used: Math.min(
-            feature.used,
-            feature.limit ?? feature.used,
-        ),
+        used: Math.min(feature.used, feature.limit ?? feature.used),
         limit: feature.limit,
         remaining:
             feature.limit !== null
@@ -287,18 +270,20 @@ const evaluationStatusClass = (status: string) =>
     <Head title="Dashboard" />
 
     <AppLayout :breadcrumbs="breadcrumbs">
-        <div
-            class="flex h-full flex-1 flex-col gap-6 px-6 pb-12 pt-6 md:px-8"
-        >
+        <div class="flex h-full flex-1 flex-col gap-6 px-6 pt-6 pb-12 md:px-8">
             <div class="flex flex-col gap-3">
-                <h1 class="text-2xl font-semibold tracking-tight text-foreground">
+                <h1
+                    class="text-2xl font-semibold tracking-tight text-foreground"
+                >
                     Workspace overview
                 </h1>
                 <p class="text-sm text-muted-foreground">
                     Keep tabs on resumes, job research, and evaluation runs in
                     one place.
                 </p>
-                <div class="flex items-center gap-2 text-xs text-muted-foreground">
+                <div
+                    class="flex items-center gap-2 text-xs text-muted-foreground"
+                >
                     <CalendarClock class="size-3.5 shrink-0" />
                     <span>Last activity: {{ lastActivityLabel }}</span>
                 </div>
@@ -312,7 +297,9 @@ const evaluationStatusClass = (status: string) =>
                     class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between"
                 >
                     <div>
-                        <p class="text-xs font-semibold uppercase tracking-wide text-primary">
+                        <p
+                            class="text-xs font-semibold tracking-wide text-primary uppercase"
+                        >
                             Free preview
                         </p>
                         <h2 class="mt-1 text-2xl font-semibold text-foreground">
@@ -330,15 +317,15 @@ const evaluationStatusClass = (status: string) =>
                     </Button>
                 </div>
 
-                <div
-                    class="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
-                >
+                <div class="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                     <article
                         v-for="feature in trialFeatureList"
                         :key="feature.key"
                         class="rounded-xl border border-border/60 bg-background/80 p-4"
                     >
-                        <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        <p
+                            class="text-xs font-semibold tracking-wide text-muted-foreground uppercase"
+                        >
                             {{ feature.label }}
                         </p>
                         <p class="mt-2 text-2xl font-semibold text-foreground">
@@ -381,11 +368,7 @@ const evaluationStatusClass = (status: string) =>
             </section>
 
             <section class="grid gap-4 lg:grid-cols-[1fr_1fr]">
-                <Card
-                    v-for="tool in tools"
-                    :key="tool.key"
-                    class="px-6"
-                >
+                <Card v-for="tool in tools" :key="tool.key" class="px-6">
                     <div class="flex h-full flex-col gap-5">
                         <div class="flex items-start gap-4">
                             <div
@@ -394,7 +377,9 @@ const evaluationStatusClass = (status: string) =>
                                 <component :is="tool.icon" class="size-5" />
                             </div>
                             <div class="space-y-1">
-                                <h2 class="text-base font-semibold leading-tight">
+                                <h2
+                                    class="text-base leading-tight font-semibold"
+                                >
                                     {{ tool.title }}
                                 </h2>
                                 <p class="text-sm text-muted-foreground">
@@ -473,7 +458,7 @@ const evaluationStatusClass = (status: string) =>
                                                 slug: resume.slug,
                                             }).url
                                         "
-                                        class="text-sm font-medium leading-tight text-foreground hover:text-primary"
+                                        class="text-sm leading-tight font-medium text-foreground hover:text-primary"
                                     >
                                         {{ resumeTitle(resume) }}
                                     </Link>
@@ -537,7 +522,7 @@ const evaluationStatusClass = (status: string) =>
                                                 job: job.id,
                                             }).url
                                         "
-                                        class="text-sm font-medium leading-tight text-foreground hover:text-primary"
+                                        class="text-sm leading-tight font-medium text-foreground hover:text-primary"
                                     >
                                         {{ jobTitle(job) }}
                                     </Link>
@@ -581,7 +566,11 @@ const evaluationStatusClass = (status: string) =>
                                         variant="outline"
                                         class="border-border/60 bg-muted/40 text-muted-foreground"
                                     >
-                                        {{ job.is_manual ? 'Manual' : 'Imported' }}
+                                        {{
+                                            job.is_manual
+                                                ? 'Manual'
+                                                : 'Imported'
+                                        }}
                                     </Badge>
                                 </div>
                             </div>
@@ -618,7 +607,7 @@ const evaluationStatusClass = (status: string) =>
                                                     evaluation: evaluation.id,
                                                 }).url
                                             "
-                                            class="text-sm font-medium leading-tight text-foreground hover:text-primary"
+                                            class="text-sm leading-tight font-medium text-foreground hover:text-primary"
                                         >
                                             {{ evaluationHeadline(evaluation) }}
                                         </Link>
@@ -721,9 +710,11 @@ const evaluationStatusClass = (status: string) =>
                                     </div>
                                     <Badge
                                         class="border text-xs font-medium"
-                                        :class="evaluationStatusClass(
-                                            evaluation.status,
-                                        )"
+                                        :class="
+                                            evaluationStatusClass(
+                                                evaluation.status,
+                                            )
+                                        "
                                     >
                                         {{
                                             evaluationStatusLabel(

@@ -5,13 +5,13 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import jobsRoutes from '@/routes/jobs';
 import type { BreadcrumbItem } from '@/types';
 import { Head, Link } from '@inertiajs/vue3';
-import { computed } from 'vue';
 import {
     BriefcaseBusiness,
     CircleCheck,
     FileText,
     Sparkles,
 } from 'lucide-vue-next';
+import { computed } from 'vue';
 
 interface JobSummary {
     id: number;
@@ -89,7 +89,7 @@ const extractHostname = (value?: string | null) => {
         <div class="space-y-10 px-6 py-8">
             <section class="max-w-3xl space-y-3">
                 <p
-                    class="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-primary"
+                    class="inline-flex items-center gap-2 text-xs font-semibold tracking-wide text-primary uppercase"
                 >
                     <span
                         class="inline-flex size-6 items-center justify-center rounded-full bg-primary/10 text-primary"
@@ -110,7 +110,9 @@ const extractHostname = (value?: string | null) => {
             <section
                 class="flex flex-col gap-5 rounded-2xl border border-border/60 bg-card/80 p-6 shadow-sm"
             >
-                <header class="flex flex-wrap items-center justify-between gap-4">
+                <header
+                    class="flex flex-wrap items-center justify-between gap-4"
+                >
                     <div>
                         <h2 class="text-lg font-semibold text-foreground">
                             Job pipeline
@@ -121,9 +123,11 @@ const extractHostname = (value?: string | null) => {
                         </p>
                     </div>
                     <span
-                        class="rounded-full border border-border/60 bg-muted/40 px-3 py-1 text-xs font-medium uppercase tracking-wide text-muted-foreground"
+                        class="rounded-full border border-border/60 bg-muted/40 px-3 py-1 text-xs font-medium tracking-wide text-muted-foreground uppercase"
                     >
-                        {{ props.jobs.length }} job{{ props.jobs.length === 1 ? '' : 's' }}
+                        {{ props.jobs.length }} job{{
+                            props.jobs.length === 1 ? '' : 's'
+                        }}
                     </span>
                 </header>
 
@@ -131,11 +135,9 @@ const extractHostname = (value?: string | null) => {
                     v-if="hasJobs"
                     class="-mx-4 overflow-hidden rounded-xl border border-border/60 md:mx-0"
                 >
-                    <table
-                        class="min-w-full divide-y divide-border/60 text-sm"
-                    >
+                    <table class="min-w-full divide-y divide-border/60 text-sm">
                         <thead
-                            class="bg-muted/40 text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                            class="bg-muted/40 text-xs font-semibold tracking-wide text-muted-foreground uppercase"
                         >
                             <tr>
                                 <th scope="col" class="px-4 py-3 text-left">
@@ -164,7 +166,9 @@ const extractHostname = (value?: string | null) => {
                                             <span
                                                 class="text-sm font-semibold text-foreground"
                                             >
-                                                {{ job.title || 'Untitled role' }}
+                                                {{
+                                                    job.title || 'Untitled role'
+                                                }}
                                             </span>
                                             <Badge
                                                 v-if="job.is_manual"
@@ -185,7 +189,11 @@ const extractHostname = (value?: string | null) => {
                                                     class="inline-flex items-center gap-1 text-primary underline-offset-4 hover:underline"
                                                 >
                                                     <FileText class="size-3" />
-                                                    {{ extractHostname(job.source_url) }}
+                                                    {{
+                                                        extractHostname(
+                                                            job.source_url,
+                                                        )
+                                                    }}
                                                 </a>
                                             </template>
                                             <span v-else>
@@ -196,14 +204,17 @@ const extractHostname = (value?: string | null) => {
                                 </td>
                                 <td class="px-4 py-4 align-top">
                                     <div class="flex flex-col gap-1 text-sm">
-                                        <span class="font-medium text-foreground">
+                                        <span
+                                            class="font-medium text-foreground"
+                                        >
                                             {{ job.company || '—' }}
                                         </span>
                                         <span
                                             v-if="formatDate(job.created_at)"
                                             class="text-xs text-muted-foreground"
                                         >
-                                            Added {{ formatDate(job.created_at) }}
+                                            Added
+                                            {{ formatDate(job.created_at) }}
                                         </span>
                                     </div>
                                 </td>
@@ -244,28 +255,57 @@ const extractHostname = (value?: string | null) => {
                                         >
                                             <FileText class="size-[13px]" />
                                             {{ job.evaluations_count }}
-                                            evaluation{{ job.evaluations_count === 1 ? '' : 's' }}
+                                            evaluation{{
+                                                job.evaluations_count === 1
+                                                    ? ''
+                                                    : 's'
+                                            }}
                                         </Badge>
                                     </div>
                                     <div
                                         class="mt-2 flex flex-col gap-1 text-xs text-muted-foreground"
                                     >
                                         <span
-                                            v-if="formatDateTime(job.last_company_research_at)"
+                                            v-if="
+                                                formatDateTime(
+                                                    job.last_company_research_at,
+                                                )
+                                            "
                                         >
                                             Research
-                                            {{ formatDateTime(job.last_company_research_at) }}
+                                            {{
+                                                formatDateTime(
+                                                    job.last_company_research_at,
+                                                )
+                                            }}
                                         </span>
                                         <span
-                                            v-if="formatDateTime(job.last_evaluated_at)"
+                                            v-if="
+                                                formatDateTime(
+                                                    job.last_evaluated_at,
+                                                )
+                                            "
                                         >
                                             Last evaluation ·
-                                            {{ formatDateTime(job.last_evaluated_at) }}
+                                            {{
+                                                formatDateTime(
+                                                    job.last_evaluated_at,
+                                                )
+                                            }}
                                         </span>
                                         <span
-                                            v-if="formatDateTime(job.last_tailored_at)"
+                                            v-if="
+                                                formatDateTime(
+                                                    job.last_tailored_at,
+                                                )
+                                            "
                                         >
-                                            Tailored {{ formatDateTime(job.last_tailored_at) }}
+                                            Tailored
+                                            {{
+                                                formatDateTime(
+                                                    job.last_tailored_at,
+                                                )
+                                            }}
                                         </span>
                                     </div>
                                 </td>

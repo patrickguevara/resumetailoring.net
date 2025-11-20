@@ -5,8 +5,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import AppLayout from '@/layouts/AppLayout.vue';
 import { useBilling } from '@/composables/useBilling';
+import AppLayout from '@/layouts/AppLayout.vue';
 import { userChannel } from '@/lib/realtime';
 import billingRoutes from '@/routes/billing';
 import evaluationRoutes from '@/routes/evaluations';
@@ -14,7 +14,6 @@ import jobsRoutes from '@/routes/jobs';
 import resumeRoutes from '@/routes/resumes';
 import type { BreadcrumbItem } from '@/types';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import {
     ArrowUpRight,
     CalendarClock,
@@ -26,6 +25,14 @@ import {
     ScrollText,
     Sparkles,
 } from 'lucide-vue-next';
+import {
+    computed,
+    onBeforeUnmount,
+    onMounted,
+    reactive,
+    ref,
+    watch,
+} from 'vue';
 
 interface JobDetail {
     id: number;
@@ -170,8 +177,7 @@ const cloneJob = (job: JobDetail): JobDetail => ({
     company_research: defaultCompanyResearch(job.company_research),
 });
 
-const jobState = ref<JobDetail>(cloneJob(props.job));
-const job = jobState;
+const job = ref<JobDetail>(cloneJob(props.job));
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -179,8 +185,8 @@ const breadcrumbs: BreadcrumbItem[] = [
         href: jobsRoutes.index.url(),
     },
     {
-        title: jobState.value.title ?? 'Job',
-        href: jobsRoutes.show({ job: jobState.value.id }).url,
+        title: job.value.title ?? 'Job',
+        href: jobsRoutes.show({ job: job.value.id }).url,
     },
 ];
 
@@ -205,9 +211,7 @@ const cloneTailored = (tailored: TailoredResume): TailoredResume => ({
         : null,
 });
 
-const evaluations = ref<Evaluation[]>(
-    props.evaluations.map(cloneEvaluation),
-);
+const evaluations = ref<Evaluation[]>(props.evaluations.map(cloneEvaluation));
 const tailoredResumes = ref<TailoredResume[]>(
     props.tailored_resumes.map(cloneTailored),
 );
@@ -359,8 +363,7 @@ const refreshJobDetails = () => {
     });
 };
 
-const initialResumeId =
-    props.resumes.length > 0 ? props.resumes[0].id : null;
+const initialResumeId = props.resumes.length > 0 ? props.resumes[0].id : null;
 
 const evaluationForm = useForm({
     resume_id: initialResumeId as number | null,
@@ -370,15 +373,15 @@ const evaluationForm = useForm({
 });
 
 const researchForm = useForm({
-    company: jobState.value.company ?? '',
-    model: jobState.value.company_research.model ?? 'gpt-5-mini',
-    focus: jobState.value.company_research.focus ?? '',
+    company: job.value.company ?? '',
+    model: job.value.company_research.model ?? 'gpt-5-mini',
+    focus: job.value.company_research.focus ?? '',
 });
 
 watch(
     () => props.job,
     (value) => {
-        jobState.value = cloneJob(value);
+        job.value = cloneJob(value);
         companyResearchProcessing.value = false;
         companyResearchError.value = null;
     },
@@ -386,7 +389,7 @@ watch(
 );
 
 watch(
-    () => jobState.value.company,
+    () => job.value.company,
     (value) => {
         researchForm.company = value ?? '';
     },
@@ -394,7 +397,7 @@ watch(
 );
 
 watch(
-    () => jobState.value.company_research.model,
+    () => job.value.company_research.model,
     (value) => {
         researchForm.model = value ?? 'gpt-5-mini';
     },
@@ -402,7 +405,7 @@ watch(
 );
 
 watch(
-    () => jobState.value.company_research.focus,
+    () => job.value.company_research.focus,
     (value) => {
         researchForm.focus = value ?? '';
     },
@@ -587,12 +590,12 @@ const activeEvaluationTailored = computed(() =>
 
 const totalTailoredResumes = computed(() => tailoredResumes.value.length);
 
-const hasCompanyResearchSummary = computed(
-    () => Boolean(jobState.value.company_research.summary),
+const hasCompanyResearchSummary = computed(() =>
+    Boolean(job.value.company_research.summary),
 );
 
-const hasJobDescription = computed(
-    () => Boolean(jobState.value.description_markdown),
+const hasJobDescription = computed(() =>
+    Boolean(job.value.description_markdown),
 );
 
 const evaluationStatusConfig: Record<
@@ -677,7 +680,7 @@ const submitEvaluation = () => {
     }
 
     evaluationForm.post(
-        jobsRoutes.evaluations.store({ job: jobState.value.id }).url,
+        jobsRoutes.evaluations.store({ job: job.value.id }).url,
         {
             preserveScroll: true,
             onSuccess: () => {
@@ -695,18 +698,15 @@ const submitResearch = () => {
     companyResearchProcessing.value = true;
     companyResearchError.value = null;
 
-    researchForm.post(
-        jobsRoutes.research.store({ job: jobState.value.id }).url,
-        {
-            preserveScroll: true,
-            onError: () => {
-                companyResearchProcessing.value = false;
-            },
-            onSuccess: () => {
-                researchForm.reset('focus');
-            },
+    researchForm.post(jobsRoutes.research.store({ job: job.value.id }).url, {
+        preserveScroll: true,
+        onError: () => {
+            companyResearchProcessing.value = false;
         },
-    );
+        onSuccess: () => {
+            researchForm.reset('focus');
+        },
+    });
 };
 
 const generateTailored = (evaluation: Evaluation | null) => {
@@ -738,9 +738,7 @@ const toggleTailoredPreview = (id: number) => {
     expandedTailored[id] = !expandedTailored[id];
 
     if (expandedTailored[id]) {
-        const tailored = tailoredResumes.value.find(
-            (item) => item.id === id,
-        );
+        const tailored = tailoredResumes.value.find((item) => item.id === id);
 
         if (!tailored || !tailored.content_markdown) {
             void fetchTailoredResume(id);
@@ -755,11 +753,12 @@ const handleResumeEvaluationUpdated = (
         (evaluation) => evaluation.id === payload.evaluation.id,
     );
 
-    const resumeInfo = existing?.resume ?? payload.evaluation.resume ?? {
-        id: null,
-        title: null,
-        slug: null,
-    };
+    const resumeInfo = existing?.resume ??
+        payload.evaluation.resume ?? {
+            id: null,
+            title: null,
+            slug: null,
+        };
 
     const normalized: Evaluation = {
         id: payload.evaluation.id,
@@ -814,9 +813,7 @@ const handleResumeEvaluationUpdated = (
     }
 };
 
-const handleTailoredResumeUpdated = (
-    payload: TailoredResumeUpdatedPayload,
-) => {
+const handleTailoredResumeUpdated = (payload: TailoredResumeUpdatedPayload) => {
     if (tailorProcessing[payload.evaluation_id] === undefined) {
         tailorProcessing[payload.evaluation_id] = false;
     }
@@ -877,7 +874,7 @@ const handleTailoredResumeUpdated = (
 const handleCompanyResearchUpdated = (
     payload: CompanyResearchUpdatedPayload,
 ) => {
-    if (payload.job_id !== jobState.value.id) {
+    if (payload.job_id !== job.value.id) {
         return;
     }
 
@@ -892,9 +889,9 @@ const handleCompanyResearchUpdated = (
 
     companyResearchError.value = null;
 
-    jobState.value = {
-        ...jobState.value,
-        company: payload.company ?? jobState.value.company ?? null,
+    job.value = {
+        ...job.value,
+        company: payload.company ?? job.value.company ?? null,
         company_research: defaultCompanyResearch(payload.company_research),
     };
 
@@ -954,12 +951,10 @@ const globalErrors = computed(() => page.props.errors ?? {});
             <section
                 class="rounded-2xl border border-border/60 bg-gradient-to-br from-accent/20 via-background to-background p-6 shadow-sm lg:sticky lg:top-6 lg:z-30"
             >
-                <div
-                    class="flex flex-wrap items-start justify-between gap-4"
-                >
+                <div class="flex flex-wrap items-start justify-between gap-4">
                     <div class="space-y-2">
                         <p
-                            class="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-primary"
+                            class="inline-flex items-center gap-2 text-xs font-semibold tracking-wide text-primary uppercase"
                         >
                             <Sparkles class="size-3.5" />
                             Job overview
@@ -1001,16 +996,16 @@ const globalErrors = computed(() => page.props.errors ?? {});
                         <CalendarClock class="size-3.5" />
                         Added {{ formatDate(job.created_at) ?? '—' }}
                     </span>
-                    <span class="hidden text-muted-foreground sm:inline">•</span>
-                    <span
-                        class="flex items-center gap-1 text-muted-foreground"
+                    <span class="hidden text-muted-foreground sm:inline"
+                        >•</span
                     >
+                    <span class="flex items-center gap-1 text-muted-foreground">
                         Updated {{ formatDateTime(job.updated_at) ?? '—' }}
                     </span>
-                    <span class="hidden text-muted-foreground sm:inline">•</span>
-                    <span
-                        class="flex items-center gap-1 text-muted-foreground"
+                    <span class="hidden text-muted-foreground sm:inline"
+                        >•</span
                     >
+                    <span class="flex items-center gap-1 text-muted-foreground">
                         {{ evaluations.length }} evaluation{{
                             evaluations.length === 1 ? '' : 's'
                         }}
@@ -1027,11 +1022,13 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                 <Sparkles class="size-5 text-primary" />
                                 <div>
                                     <p
-                                        class="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                                        class="text-xs font-semibold tracking-wide text-muted-foreground uppercase"
                                     >
                                         Evaluations
                                     </p>
-                                    <p class="text-base font-semibold text-foreground">
+                                    <p
+                                        class="text-base font-semibold text-foreground"
+                                    >
                                         {{ evaluations.length }}
                                         <span
                                             class="ml-1 text-sm font-normal text-muted-foreground"
@@ -1054,11 +1051,13 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                 <FileText class="size-5 text-primary" />
                                 <div>
                                     <p
-                                        class="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                                        class="text-xs font-semibold tracking-wide text-muted-foreground uppercase"
                                     >
                                         Tailored resumes
                                     </p>
-                                    <p class="text-base font-semibold text-foreground">
+                                    <p
+                                        class="text-base font-semibold text-foreground"
+                                    >
                                         {{ totalTailoredResumes }}
                                         <span
                                             class="ml-1 text-sm font-normal text-muted-foreground"
@@ -1098,7 +1097,7 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                 />
                                 <div>
                                     <p
-                                        class="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                                        class="text-xs font-semibold tracking-wide text-muted-foreground uppercase"
                                     >
                                         Company research
                                     </p>
@@ -1136,11 +1135,13 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                 <ScrollText class="size-5 text-primary" />
                                 <div>
                                     <p
-                                        class="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                                        class="text-xs font-semibold tracking-wide text-muted-foreground uppercase"
                                     >
                                         Job description
                                     </p>
-                                    <p class="text-base font-semibold text-foreground">
+                                    <p
+                                        class="text-base font-semibold text-foreground"
+                                    >
                                         {{
                                             hasJobDescription
                                                 ? 'Ready to review'
@@ -1215,7 +1216,7 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                     id="resume_id"
                                     v-model.number="evaluationForm.resume_id"
                                     name="resume_id"
-                                    class="w-full rounded-lg border border-border/70 bg-background px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+                                    class="w-full rounded-lg border border-border/70 bg-background px-3 py-2 text-sm text-foreground focus:border-primary focus:ring-2 focus:ring-primary/30 focus:outline-none"
                                     :aria-invalid="
                                         !!evaluationForm.errors.resume_id
                                     "
@@ -1279,14 +1280,16 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                     placeholder="https://company.com/careers/updated-role"
                                     :aria-invalid="
                                         !!(
-                                            evaluationForm.errors.job_url_override ||
+                                            evaluationForm.errors
+                                                .job_url_override ||
                                             globalErrors.job_url_override
                                         )
                                     "
                                 />
                                 <InputError
                                     :message="
-                                        evaluationForm.errors.job_url_override ||
+                                        evaluationForm.errors
+                                            .job_url_override ||
                                         globalErrors.job_url_override
                                     "
                                 />
@@ -1305,10 +1308,12 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                     v-model="evaluationForm.notes"
                                     name="notes"
                                     rows="3"
-                                    class="w-full max-w-full resize-y rounded-lg border border-border/70 bg-background px-3 py-3 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+                                    class="w-full max-w-full resize-y rounded-lg border border-border/70 bg-background px-3 py-3 text-sm text-foreground focus:border-primary focus:ring-2 focus:ring-primary/30 focus:outline-none"
                                     placeholder="Why are you re-running this evaluation?"
                                 />
-                                <InputError :message="evaluationForm.errors.notes" />
+                                <InputError
+                                    :message="evaluationForm.errors.notes"
+                                />
                             </div>
 
                             <Button
@@ -1330,9 +1335,13 @@ const globalErrors = computed(() => page.props.errors ?? {});
                         id="evaluation-details"
                         class="rounded-2xl border border-border/60 bg-card/80 p-6 shadow-sm"
                     >
-                        <header class="flex flex-wrap items-center justify-between gap-3">
+                        <header
+                            class="flex flex-wrap items-center justify-between gap-3"
+                        >
                             <div>
-                                <h2 class="text-lg font-semibold text-foreground">
+                                <h2
+                                    class="text-lg font-semibold text-foreground"
+                                >
                                     Evaluation detail
                                 </h2>
                                 <p class="text-sm text-muted-foreground">
@@ -1343,7 +1352,9 @@ const globalErrors = computed(() => page.props.errors ?? {});
                             <Badge
                                 v-if="activeEvaluation"
                                 :class="
-                                    evaluationStatusClass(activeEvaluation.status)
+                                    evaluationStatusClass(
+                                        activeEvaluation.status,
+                                    )
                                 "
                             >
                                 <Loader2
@@ -1351,25 +1362,33 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                     class="mr-1 size-3 animate-spin"
                                 />
                                 {{
-                                    evaluationStatusLabel(activeEvaluation.status)
+                                    evaluationStatusLabel(
+                                        activeEvaluation.status,
+                                    )
                                 }}
                             </Badge>
                         </header>
 
                         <div v-if="activeEvaluation" class="mt-4 space-y-6">
                             <div
-                                v-if="activeEvaluation.status === 'failed' && activeEvaluation.error_message"
+                                v-if="
+                                    activeEvaluation.status === 'failed' &&
+                                    activeEvaluation.error_message
+                                "
                                 class="rounded-xl border border-error/30 bg-error/10 p-4 text-sm text-error"
                             >
                                 {{ activeEvaluation.error_message }}
                             </div>
                             <div
-                                v-else-if="activeEvaluation.status === 'pending'"
+                                v-else-if="
+                                    activeEvaluation.status === 'pending'
+                                "
                                 class="flex items-center gap-2 rounded-xl border border-warning/30 bg-warning/10 p-4 text-sm text-warning"
                             >
                                 <Loader2 class="size-4 animate-spin" />
                                 <span>
-                                    Evaluation is running. This section will update automatically once it completes.
+                                    Evaluation is running. This section will
+                                    update automatically once it completes.
                                 </span>
                             </div>
                             <div
@@ -1379,10 +1398,14 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                     class="flex flex-wrap items-center justify-between gap-3"
                                 >
                                     <div class="space-y-1">
-                                        <p class="text-sm font-semibold text-foreground">
+                                        <p
+                                            class="text-sm font-semibold text-foreground"
+                                        >
                                             Resume used
                                         </p>
-                                        <p class="text-sm text-muted-foreground">
+                                        <p
+                                            class="text-sm text-muted-foreground"
+                                        >
                                             {{
                                                 activeEvaluation.resume.title ||
                                                 'Resume'
@@ -1424,7 +1447,9 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                 v-if="activeEvaluation.notes"
                                 class="rounded-xl border border-border/60 bg-background/80 p-4"
                             >
-                                <p class="text-xs font-semibold uppercase text-muted-foreground">
+                                <p
+                                    class="text-xs font-semibold text-muted-foreground uppercase"
+                                >
                                     Notes
                                 </p>
                                 <p class="mt-2 text-sm text-foreground">
@@ -1436,7 +1461,9 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                 <div
                                     class="flex flex-wrap items-center justify-between gap-2"
                                 >
-                                    <h3 class="text-sm font-semibold text-foreground">
+                                    <h3
+                                        class="text-sm font-semibold text-foreground"
+                                    >
                                         Feedback
                                     </h3>
                                     <span class="text-xs text-muted-foreground">
@@ -1461,15 +1488,15 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                 <div
                                     class="flex flex-wrap items-center justify-between gap-2"
                                 >
-                                    <h3 class="text-sm font-semibold text-foreground">
+                                    <h3
+                                        class="text-sm font-semibold text-foreground"
+                                    >
                                         Generate tailored resume
                                     </h3>
                                     <Badge
                                         class="border-border/60 bg-muted/50 text-muted-foreground"
                                     >
-                                        {{
-                                            activeEvaluationTailored.length
-                                        }}
+                                        {{ activeEvaluationTailored.length }}
                                         existing
                                     </Badge>
                                 </div>
@@ -1509,7 +1536,9 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                     </Label>
                                     <Input
                                         :id="`tailored-title-${activeEvaluation.id}`"
-                                        v-model="tailorTitles[activeEvaluation.id]"
+                                        v-model="
+                                            tailorTitles[activeEvaluation.id]
+                                        "
                                         type="text"
                                         placeholder="Tailored resume title"
                                     />
@@ -1519,7 +1548,8 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                     size="sm"
                                     :disabled="
                                         tailorProcessing[activeEvaluation.id] ||
-                                        activeEvaluation.status !== 'completed' ||
+                                        activeEvaluation.status !==
+                                            'completed' ||
                                         tailoringBlocked
                                     "
                                     @click="generateTailored(activeEvaluation)"
@@ -1537,18 +1567,20 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                 <div
                                     class="flex flex-wrap items-center justify-between gap-2"
                                 >
-                                    <h3 class="text-sm font-semibold text-foreground">
+                                    <h3
+                                        class="text-sm font-semibold text-foreground"
+                                    >
                                         Tailored outputs from this run
                                     </h3>
                                     <span class="text-xs text-muted-foreground">
-                                        {{
-                                            activeEvaluationTailored.length
-                                        }}
+                                        {{ activeEvaluationTailored.length }}
                                         total
                                     </span>
                                 </div>
 
-                                <template v-if="activeEvaluationTailored.length">
+                                <template
+                                    v-if="activeEvaluationTailored.length"
+                                >
                                     <article
                                         v-for="tailored in activeEvaluationTailored"
                                         :key="tailored.id"
@@ -1557,7 +1589,9 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                         <div
                                             class="flex flex-wrap items-center justify-between gap-2"
                                         >
-                                            <p class="text-sm font-semibold text-foreground">
+                                            <p
+                                                class="text-sm font-semibold text-foreground"
+                                            >
                                                 {{
                                                     tailored.title ||
                                                     'Tailored resume'
@@ -1566,10 +1600,15 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                             <Badge
                                                 class="border-secondary/40 bg-secondary/20 text-secondary-foreground"
                                             >
-                                                {{ tailored.model || 'gpt-5-mini' }}
+                                                {{
+                                                    tailored.model ||
+                                                    'gpt-5-mini'
+                                                }}
                                             </Badge>
                                         </div>
-                                        <p class="mt-2 text-xs text-muted-foreground">
+                                        <p
+                                            class="mt-2 text-xs text-muted-foreground"
+                                        >
                                             {{
                                                 formatDateTime(
                                                     tailored.created_at,
@@ -1580,7 +1619,11 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                             size="sm"
                                             variant="ghost"
                                             class="mt-3 justify-start"
-                                            @click="toggleTailoredPreview(tailored.id)"
+                                            @click="
+                                                toggleTailoredPreview(
+                                                    tailored.id,
+                                                )
+                                            "
                                         >
                                             <FileText class="mr-2 size-4" />
                                             {{
@@ -1594,7 +1637,10 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                             class="mt-3 rounded-lg border border-border/60 bg-background/80 p-3"
                                         >
                                             <MarkdownViewer
-                                                :content="tailored.content_markdown ?? ''"
+                                                :content="
+                                                    tailored.content_markdown ??
+                                                    ''
+                                                "
                                             />
                                         </div>
                                     </article>
@@ -1634,7 +1680,10 @@ const globalErrors = computed(() => page.props.errors ?? {});
                             class="rounded-xl border border-border/60 bg-background/80 p-4"
                         >
                             <MarkdownViewer
-                                :content="job.description_markdown ?? '*No description stored yet.*'"
+                                :content="
+                                    job.description_markdown ??
+                                    '*No description stored yet.*'
+                                "
                             />
                         </div>
                     </div>
@@ -1647,7 +1696,9 @@ const globalErrors = computed(() => page.props.errors ?? {});
                     >
                         <header class="flex items-center justify-between gap-3">
                             <div>
-                                <h2 class="text-lg font-semibold text-foreground">
+                                <h2
+                                    class="text-lg font-semibold text-foreground"
+                                >
                                     Company research
                                 </h2>
                                 <p class="text-sm text-muted-foreground">
@@ -1662,14 +1713,18 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                 size="sm"
                                 class="gap-1 text-sm font-medium text-muted-foreground hover:text-foreground"
                                 :aria-expanded="showCompanyResearch"
-                                @click="showCompanyResearch = !showCompanyResearch"
+                                @click="
+                                    showCompanyResearch = !showCompanyResearch
+                                "
                             >
                                 <span>
                                     {{ showCompanyResearch ? 'Hide' : 'Show' }}
                                 </span>
                                 <ChevronDown
                                     class="size-4 transition-transform duration-200"
-                                    :class="showCompanyResearch ? 'rotate-180' : ''"
+                                    :class="
+                                        showCompanyResearch ? 'rotate-180' : ''
+                                    "
                                 />
                             </Button>
                         </header>
@@ -1682,13 +1737,16 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                 <div
                                     class="flex flex-wrap items-center justify-between gap-2"
                                 >
-                                    <h3 class="text-sm font-semibold text-foreground">
+                                    <h3
+                                        class="text-sm font-semibold text-foreground"
+                                    >
                                         Latest briefing
                                     </h3>
                                     <span class="text-xs text-muted-foreground">
                                         {{
                                             formatDateTime(
-                                                job.company_research.last_ran_at,
+                                                job.company_research
+                                                    .last_ran_at,
                                             ) || '—'
                                         }}
                                     </span>
@@ -1736,103 +1794,114 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                     class="flex flex-col gap-5"
                                 >
                                     <div class="space-y-2">
-                                        <Label for="company_name">Company name</Label>
+                                        <Label for="company_name"
+                                            >Company name</Label
+                                        >
                                         <Input
                                             id="company_name"
                                             v-model="researchForm.company"
-                                        name="company"
-                                        type="text"
-                                        placeholder="Acme Robotics"
-                                        :aria-invalid="
-                                            !!(
+                                            name="company"
+                                            type="text"
+                                            placeholder="Acme Robotics"
+                                            :aria-invalid="
+                                                !!(
+                                                    researchForm.errors
+                                                        .company ||
+                                                    globalErrors.company
+                                                )
+                                            "
+                                        />
+                                        <InputError
+                                            :message="
                                                 researchForm.errors.company ||
                                                 globalErrors.company
-                                            )
-                                        "
-                                    />
-                                    <InputError
-                                        :message="
-                                            researchForm.errors.company ||
-                                            globalErrors.company
-                                        "
-                                    />
-                                </div>
-
-                                <div class="space-y-2">
-                                    <Label>Model</Label>
-                                    <div class="grid gap-2 md:grid-cols-2">
-                                        <button
-                                            v-for="model in availableModels"
-                                            :key="model.id"
-                                            type="button"
-                                            :class="[
-                                                'flex flex-col gap-1 rounded-lg border px-3 py-2 text-left transition',
-                                                researchForm.model === model.id
-                                                    ? 'border-primary bg-primary/10 text-foreground shadow-sm'
-                                                    : 'border-border/60 bg-background/70 text-muted-foreground hover:border-primary/60 hover:bg-primary/5',
-                                            ]"
-                                            @click="researchForm.model = model.id"
-                                        >
-                                            <span class="text-sm font-medium">
-                                                {{ model.label }}
-                                            </span>
-                                            <span class="text-xs">
-                                                {{ model.helper }}
-                                            </span>
-                                        </button>
+                                            "
+                                        />
                                     </div>
-                                    <InputError
-                                        :message="researchForm.errors.model"
-                                    />
-                                </div>
 
-                                <div class="space-y-2">
-                                    <Label for="research_focus"
-                                        >Focus areas (optional)</Label
+                                    <div class="space-y-2">
+                                        <Label>Model</Label>
+                                        <div class="grid gap-2 md:grid-cols-2">
+                                            <button
+                                                v-for="model in availableModels"
+                                                :key="model.id"
+                                                type="button"
+                                                :class="[
+                                                    'flex flex-col gap-1 rounded-lg border px-3 py-2 text-left transition',
+                                                    researchForm.model ===
+                                                    model.id
+                                                        ? 'border-primary bg-primary/10 text-foreground shadow-sm'
+                                                        : 'border-border/60 bg-background/70 text-muted-foreground hover:border-primary/60 hover:bg-primary/5',
+                                                ]"
+                                                @click="
+                                                    researchForm.model =
+                                                        model.id
+                                                "
+                                            >
+                                                <span
+                                                    class="text-sm font-medium"
+                                                >
+                                                    {{ model.label }}
+                                                </span>
+                                                <span class="text-xs">
+                                                    {{ model.helper }}
+                                                </span>
+                                            </button>
+                                        </div>
+                                        <InputError
+                                            :message="researchForm.errors.model"
+                                        />
+                                    </div>
+
+                                    <div class="space-y-2">
+                                        <Label for="research_focus"
+                                            >Focus areas (optional)</Label
+                                        >
+                                        <textarea
+                                            id="research_focus"
+                                            v-model="researchForm.focus"
+                                            name="focus"
+                                            rows="3"
+                                            class="w-full max-w-full resize-y rounded-lg border border-border/70 bg-background px-3 py-3 text-sm text-foreground focus:border-primary focus:ring-2 focus:ring-primary/30 focus:outline-none"
+                                            placeholder="Upcoming product launch, regional market dynamics, hiring initiatives..."
+                                        />
+                                        <InputError
+                                            :message="researchForm.errors.focus"
+                                        />
+                                    </div>
+
+                                    <Button
+                                        type="submit"
+                                        :disabled="
+                                            isResearchRunning || researchBlocked
+                                        "
+                                        class="justify-center"
                                     >
-                                    <textarea
-                                        id="research_focus"
-                                        v-model="researchForm.focus"
-                                        name="focus"
-                                        rows="3"
-                                        class="w-full max-w-full resize-y rounded-lg border border-border/70 bg-background px-3 py-3 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
-                                        placeholder="Upcoming product launch, regional market dynamics, hiring initiatives..."
-                                    />
-                                    <InputError :message="researchForm.errors.focus" />
-                                </div>
-
-                                <Button
-                                    type="submit"
-                                    :disabled="isResearchRunning || researchBlocked"
-                                    class="justify-center"
-                                >
-                                    <Loader2
-                                        v-if="isResearchRunning"
-                                        class="mr-2 size-4 animate-spin"
-                                    />
-                                    <Sparkles
-                                        v-else
-                                        class="mr-2 size-4"
-                                    />
-                                    <span v-if="isResearchRunning">
-                                        Running company research…
-                                    </span>
-                                    <span v-else>
-                                        Run company research
-                                    </span>
-                                </Button>
-                                <p
-                                    v-if="companyResearchError"
-                                    class="text-xs text-error"
-                                >
-                                    {{ companyResearchError }}
-                                </p>
-                                <p
-                                    v-else-if="isResearchRunning"
-                                    class="text-xs text-muted-foreground"
-                                >
-                                    Sit tight—we'll update the briefing as soon as it finishes.
-                                </p>
+                                        <Loader2
+                                            v-if="isResearchRunning"
+                                            class="mr-2 size-4 animate-spin"
+                                        />
+                                        <Sparkles v-else class="mr-2 size-4" />
+                                        <span v-if="isResearchRunning">
+                                            Running company research…
+                                        </span>
+                                        <span v-else>
+                                            Run company research
+                                        </span>
+                                    </Button>
+                                    <p
+                                        v-if="companyResearchError"
+                                        class="text-xs text-error"
+                                    >
+                                        {{ companyResearchError }}
+                                    </p>
+                                    <p
+                                        v-else-if="isResearchRunning"
+                                        class="text-xs text-muted-foreground"
+                                    >
+                                        Sit tight—we'll update the briefing as
+                                        soon as it finishes.
+                                    </p>
                                 </fieldset>
                             </form>
                         </div>
@@ -1844,7 +1913,9 @@ const globalErrors = computed(() => page.props.errors ?? {});
                     >
                         <header class="flex items-center justify-between gap-3">
                             <div>
-                                <h2 class="text-lg font-semibold text-foreground">
+                                <h2
+                                    class="text-lg font-semibold text-foreground"
+                                >
                                     Evaluation history
                                 </h2>
                                 <p class="text-sm text-muted-foreground">
@@ -1877,7 +1948,9 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                         class="flex flex-wrap items-start justify-between gap-3"
                                     >
                                         <div class="space-y-1">
-                                            <p class="text-sm font-semibold text-foreground">
+                                            <p
+                                                class="text-sm font-semibold text-foreground"
+                                            >
                                                 {{
                                                     evaluation.resume.title ||
                                                     'Resume'
@@ -1898,7 +1971,10 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                             "
                                         >
                                             <Loader2
-                                                v-if="evaluation.status === 'pending'"
+                                                v-if="
+                                                    evaluation.status ===
+                                                    'pending'
+                                                "
                                                 class="mr-1 size-3 animate-spin"
                                             />
                                             {{

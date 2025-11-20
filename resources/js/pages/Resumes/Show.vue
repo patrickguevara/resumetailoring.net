@@ -5,15 +5,14 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import AppLayout from '@/layouts/AppLayout.vue';
 import { useBilling } from '@/composables/useBilling';
+import AppLayout from '@/layouts/AppLayout.vue';
 import { userChannel } from '@/lib/realtime';
 import billingRoutes from '@/routes/billing';
 import jobsRoutes from '@/routes/jobs';
 import resumeRoutes from '@/routes/resumes';
 import type { BreadcrumbItem } from '@/types';
 import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import {
     AlertTriangle,
     ArrowUpRight,
@@ -25,6 +24,14 @@ import {
     ScrollText,
     Sparkles,
 } from 'lucide-vue-next';
+import {
+    computed,
+    onBeforeUnmount,
+    onMounted,
+    reactive,
+    ref,
+    watch,
+} from 'vue';
 
 interface ResumeDetail {
     id: number;
@@ -194,8 +201,7 @@ const cloneResume = (value: ResumeDetail): ResumeDetail => ({
     ingested_at: value.ingested_at ?? null,
 });
 
-const resumeState = ref<ResumeDetail>(cloneResume(props.resume));
-const resume = resumeState;
+const resume = ref<ResumeDetail>(cloneResume(props.resume));
 
 watch(
     () => props.resume,
@@ -220,9 +226,7 @@ const cloneTailored = (tailored: TailoredResume): TailoredResume => ({
         : null,
 });
 
-const evaluations = ref<Evaluation[]>(
-    props.evaluations.map(cloneEvaluation),
-);
+const evaluations = ref<Evaluation[]>(props.evaluations.map(cloneEvaluation));
 const tailoredResumes = ref<TailoredResume[]>(
     props.tailored_resumes.map(cloneTailored),
 );
@@ -278,14 +282,14 @@ const fetchEvaluationDetails = async (evaluationId: number) => {
                   is_manual: data.job_description.is_manual,
                   company: data.job_description.company ?? null,
               }
-            : existing?.job_description ?? {
+            : (existing?.job_description ?? {
                   id: evaluationId,
                   title: 'Job description',
                   url: null,
                   source_label: 'Job description',
                   is_manual: true,
                   company: null,
-              };
+              });
 
         const normalized: Evaluation = {
             id: data.id,
@@ -298,7 +302,8 @@ const fetchEvaluationDetails = async (evaluationId: number) => {
             completed_at: data.completed_at ?? null,
             created_at: data.created_at ?? null,
             job_description: jobDescription,
-            tailored_count: data.tailored_count ?? existing?.tailored_count ?? 0,
+            tailored_count:
+                data.tailored_count ?? existing?.tailored_count ?? 0,
         };
 
         const existingIndex = evaluations.value.findIndex(
@@ -559,9 +564,7 @@ const toggleTailoredPreview = (id: number) => {
     expandedTailored[id] = !expandedTailored[id];
 
     if (expandedTailored[id]) {
-        const tailored = tailoredResumes.value.find(
-            (item) => item.id === id,
-        );
+        const tailored = tailoredResumes.value.find((item) => item.id === id);
 
         if (!tailored || !tailored.content_markdown) {
             void fetchTailoredResume(id);
@@ -613,9 +616,7 @@ const handleResumeEvaluationUpdated = (
     }
 };
 
-const handleTailoredResumeUpdated = (
-    payload: TailoredResumeUpdatedPayload,
-) => {
+const handleTailoredResumeUpdated = (payload: TailoredResumeUpdatedPayload) => {
     if (payload.status === 'failed') {
         if (payload.error_message) {
             console.error(payload.error_message);
@@ -721,7 +722,7 @@ const globalErrors = computed(() => page.props.errors ?? {});
                 <div class="flex flex-wrap items-start justify-between gap-4">
                     <div class="space-y-2">
                         <p
-                            class="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-primary"
+                            class="inline-flex items-center gap-2 text-xs font-semibold tracking-wide text-primary uppercase"
                         >
                             <Sparkles class="size-3.5" />
                             Resume overview
@@ -737,9 +738,7 @@ const globalErrors = computed(() => page.props.errors ?? {});
                         </p>
                     </div>
                     <div class="flex flex-wrap items-center gap-2">
-                        <Button variant="outline" size="sm">
-                            Duplicate
-                        </Button>
+                        <Button variant="outline" size="sm"> Duplicate </Button>
                         <Button variant="secondary" size="sm">
                             Export markdown
                         </Button>
@@ -752,14 +751,18 @@ const globalErrors = computed(() => page.props.errors ?? {});
                         <CalendarClock class="size-3.5" />
                         Added {{ formatDate(resume.created_at) ?? '—' }}
                     </span>
-                    <span class="hidden text-muted-foreground sm:inline">•</span>
+                    <span class="hidden text-muted-foreground sm:inline"
+                        >•</span
+                    >
                     <span class="flex items-center gap-1 text-muted-foreground">
                         Updated {{ formatDateTime(resume.updated_at) ?? '—' }}
                     </span>
-                    <span class="hidden text-muted-foreground sm:inline">•</span>
+                    <span class="hidden text-muted-foreground sm:inline"
+                        >•</span
+                    >
                     <span
                         :class="[
-                            'inline-flex items-center gap-2 rounded-full border px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide',
+                            'inline-flex items-center gap-2 rounded-full border px-2 py-0.5 text-[11px] font-semibold tracking-wide uppercase',
                             ingestionStatusBadgeClass,
                         ]"
                     >
@@ -774,12 +777,16 @@ const globalErrors = computed(() => page.props.errors ?? {});
                         <CircleCheck v-else class="size-3" />
                         <span>{{ ingestionStatusLabel }}</span>
                     </span>
-                    <span class="hidden text-muted-foreground sm:inline">•</span>
+                    <span class="hidden text-muted-foreground sm:inline"
+                        >•</span
+                    >
                     <span class="flex items-center gap-1 text-muted-foreground">
                         {{ totalEvaluations }}
                         evaluation{{ totalEvaluations === 1 ? '' : 's' }}
                     </span>
-                    <span class="hidden text-muted-foreground sm:inline">•</span>
+                    <span class="hidden text-muted-foreground sm:inline"
+                        >•</span
+                    >
                     <span class="flex items-center gap-1 text-muted-foreground">
                         {{ totalTailoredResumes }}
                         tailored version{{
@@ -798,11 +805,13 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                 <Sparkles class="size-5 text-primary" />
                                 <div>
                                     <p
-                                        class="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                                        class="text-xs font-semibold tracking-wide text-muted-foreground uppercase"
                                     >
                                         Run evaluation
                                     </p>
-                                    <p class="text-base font-semibold text-foreground">
+                                    <p
+                                        class="text-base font-semibold text-foreground"
+                                    >
                                         {{ totalEvaluations }}
                                         <span
                                             class="ml-1 text-sm font-normal text-muted-foreground"
@@ -825,11 +834,13 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                 <FileText class="size-5 text-primary" />
                                 <div>
                                     <p
-                                        class="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                                        class="text-xs font-semibold tracking-wide text-muted-foreground uppercase"
                                     >
                                         Tailored resumes
                                     </p>
-                                    <p class="text-base font-semibold text-foreground">
+                                    <p
+                                        class="text-base font-semibold text-foreground"
+                                    >
                                         {{ totalTailoredResumes }}
                                         <span
                                             class="ml-1 text-sm font-normal text-muted-foreground"
@@ -852,8 +863,8 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                     : isResumeProcessing
                                       ? 'border-warning/60 bg-warning/10 hover:border-warning/70 hover:bg-warning/15'
                                       : hasResumeContent
-                                          ? 'border-success/50 bg-success/10 hover:border-success/60 hover:bg-success/15'
-                                          : 'border-border/60 bg-background/60 hover:border-primary/60 hover:bg-primary/5',
+                                        ? 'border-success/50 bg-success/10 hover:border-success/60 hover:bg-success/15'
+                                        : 'border-border/60 bg-background/60 hover:border-primary/60 hover:bg-primary/5',
                             ]"
                             @click="scrollToSection('resume-preview')"
                         >
@@ -866,13 +877,13 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                             : isResumeProcessing
                                               ? 'text-warning'
                                               : hasResumeContent
-                                                  ? 'text-success'
-                                                  : 'text-muted-foreground'
+                                                ? 'text-success'
+                                                : 'text-muted-foreground'
                                     "
                                 />
                                 <div>
                                     <p
-                                        class="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                                        class="text-xs font-semibold tracking-wide text-muted-foreground uppercase"
                                     >
                                         Resume markdown
                                     </p>
@@ -884,8 +895,8 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                                 : isResumeProcessing
                                                   ? 'text-warning'
                                                   : hasResumeContent
-                                                      ? 'text-success'
-                                                      : 'text-foreground'
+                                                    ? 'text-success'
+                                                    : 'text-foreground'
                                         "
                                     >
                                         {{
@@ -894,8 +905,8 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                                 : isResumeProcessing
                                                   ? 'Processing upload'
                                                   : hasResumeContent
-                                                      ? 'Ready to review'
-                                                      : 'Add content'
+                                                    ? 'Ready to review'
+                                                    : 'Add content'
                                         }}
                                     </p>
                                 </div>
@@ -908,8 +919,8 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                         : isResumeProcessing
                                           ? 'text-warning'
                                           : hasResumeContent
-                                              ? 'text-success'
-                                              : 'text-muted-foreground group-hover:text-foreground',
+                                            ? 'text-success'
+                                            : 'text-muted-foreground group-hover:text-foreground',
                                 ]"
                             />
                         </button>
@@ -922,11 +933,13 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                 <History class="size-5 text-primary" />
                                 <div>
                                     <p
-                                        class="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                                        class="text-xs font-semibold tracking-wide text-muted-foreground uppercase"
                                     >
                                         Evaluation history
                                     </p>
-                                    <p class="text-base font-semibold text-foreground">
+                                    <p
+                                        class="text-base font-semibold text-foreground"
+                                    >
                                         {{ totalEvaluations }}
                                         <span
                                             class="ml-1 text-sm font-normal text-muted-foreground"
@@ -952,75 +965,80 @@ const globalErrors = computed(() => page.props.errors ?? {});
                         id="run-evaluation"
                         class="rounded-2xl border border-border/60 bg-card/80 p-6 shadow-sm"
                     >
-                <header class="space-y-1">
-                    <h2 class="text-lg font-semibold text-foreground">
-                        Run a new evaluation
-                    </h2>
-                    <p class="text-sm text-muted-foreground">
+                        <header class="space-y-1">
+                            <h2 class="text-lg font-semibold text-foreground">
+                                Run a new evaluation
+                            </h2>
+                            <p class="text-sm text-muted-foreground">
                                 Compare this resume against a job by URL or by
-                        pasting the description. Choose the model that
-                        best fits your review depth.
-                    </p>
-                </header>
-
-                <div
-                    v-if="!evaluationBlockedByLimit"
-                    class="mt-3 rounded-lg border border-border/50 bg-muted/40 p-3 text-xs text-muted-foreground"
-                >
-                    {{ evaluationAllowanceCopy }}
-                </div>
-
-                <div
-                    v-if="!canRunEvaluation"
-                    class="mt-4 rounded-xl border border-border/60 bg-background/70 p-4 text-sm"
-                >
-                    <div class="flex items-start gap-3">
-                        <Loader2
-                            v-if="isResumeProcessing"
-                            class="mt-0.5 size-4 animate-spin text-warning"
-                        />
-                        <AlertTriangle
-                            v-else
-                            class="mt-0.5 size-4 text-error"
-                        />
-                        <div class="space-y-2">
-                            <p
-                                :class="
-                                    isResumeProcessing
-                                        ? 'font-medium text-warning'
-                                        : 'font-medium text-error'
-                                "
-                            >
-                                {{ evaluationDisabledMessage }}
+                                pasting the description. Choose the model that
+                                best fits your review depth.
                             </p>
-                            <div v-if="evaluationBlockedByLimit" class="pt-2">
-                                <Button
-                                    size="sm"
-                                    variant="secondary"
-                                    as-child
-                                >
-                                    <Link :href="billingRoutes.edit.url()">
-                                        Upgrade for {{ planPriceLabel }}
-                                    </Link>
-                                </Button>
-                            </div>
-                            <p
-                                v-if="
-                                    resumeProcessingFailed &&
-                                    ingestionErrorMessage
-                                "
-                                class="text-xs text-muted-foreground"
-                            >
-                                Error: {{ ingestionErrorMessage }}
-                            </p>
+                        </header>
+
+                        <div
+                            v-if="!evaluationBlockedByLimit"
+                            class="mt-3 rounded-lg border border-border/50 bg-muted/40 p-3 text-xs text-muted-foreground"
+                        >
+                            {{ evaluationAllowanceCopy }}
                         </div>
-                    </div>
-                </div>
 
-                <form
-                    class="mt-4 flex flex-col gap-5"
-                    @submit.prevent="submitEvaluation"
-                >
+                        <div
+                            v-if="!canRunEvaluation"
+                            class="mt-4 rounded-xl border border-border/60 bg-background/70 p-4 text-sm"
+                        >
+                            <div class="flex items-start gap-3">
+                                <Loader2
+                                    v-if="isResumeProcessing"
+                                    class="mt-0.5 size-4 animate-spin text-warning"
+                                />
+                                <AlertTriangle
+                                    v-else
+                                    class="mt-0.5 size-4 text-error"
+                                />
+                                <div class="space-y-2">
+                                    <p
+                                        :class="
+                                            isResumeProcessing
+                                                ? 'font-medium text-warning'
+                                                : 'font-medium text-error'
+                                        "
+                                    >
+                                        {{ evaluationDisabledMessage }}
+                                    </p>
+                                    <div
+                                        v-if="evaluationBlockedByLimit"
+                                        class="pt-2"
+                                    >
+                                        <Button
+                                            size="sm"
+                                            variant="secondary"
+                                            as-child
+                                        >
+                                            <Link
+                                                :href="billingRoutes.edit.url()"
+                                            >
+                                                Upgrade for {{ planPriceLabel }}
+                                            </Link>
+                                        </Button>
+                                    </div>
+                                    <p
+                                        v-if="
+                                            resumeProcessingFailed &&
+                                            ingestionErrorMessage
+                                        "
+                                        class="text-xs text-muted-foreground"
+                                    >
+                                        Error: {{ ingestionErrorMessage }}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <form
+                            class="mt-4 flex flex-col gap-5"
+                            @submit.prevent="submitEvaluation"
+                        >
                             <div>
                                 <Label class="text-xs font-semibold uppercase">
                                     Job description source
@@ -1030,13 +1048,15 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                         type="button"
                                         size="sm"
                                         :variant="
-                                            evaluationForm.job_input_type === 'url'
+                                            evaluationForm.job_input_type ===
+                                            'url'
                                                 ? 'default'
                                                 : 'outline'
                                         "
                                         class="justify-center"
                                         @click="
-                                            evaluationForm.job_input_type = 'url'
+                                            evaluationForm.job_input_type =
+                                                'url'
                                         "
                                     >
                                         Job URL
@@ -1045,13 +1065,15 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                         type="button"
                                         size="sm"
                                         :variant="
-                                            evaluationForm.job_input_type === 'text'
+                                            evaluationForm.job_input_type ===
+                                            'text'
                                                 ? 'default'
                                                 : 'outline'
                                         "
                                         class="justify-center"
                                         @click="
-                                            evaluationForm.job_input_type = 'text'
+                                            evaluationForm.job_input_type =
+                                                'text'
                                         "
                                     >
                                         Paste description
@@ -1061,9 +1083,7 @@ const globalErrors = computed(() => page.props.errors ?? {});
 
                             <div class="grid gap-4 sm:grid-cols-2">
                                 <div class="space-y-2">
-                                    <Label for="job_title"
-                                        >Role title</Label
-                                    >
+                                    <Label for="job_title">Role title</Label>
                                     <Input
                                         id="job_title"
                                         v-model="evaluationForm.job_title"
@@ -1075,7 +1095,9 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                         "
                                     />
                                     <InputError
-                                        :message="evaluationForm.errors.job_title"
+                                        :message="
+                                            evaluationForm.errors.job_title
+                                        "
                                     />
                                 </div>
                                 <div class="space-y-2">
@@ -1110,7 +1132,10 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                     type="url"
                                     placeholder="https://company.com/careers/role"
                                     :aria-invalid="
-                                        !!(evaluationForm.errors.job_url || globalErrors.job_url)
+                                        !!(
+                                            evaluationForm.errors.job_url ||
+                                            globalErrors.job_url
+                                        )
                                     "
                                 />
                                 <InputError
@@ -1121,23 +1146,22 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                 />
                             </div>
 
-                            <div
-                                v-else
-                                class="space-y-2"
-                            >
+                            <div v-else class="space-y-2">
                                 <Label for="job_text"
-                                    >Job description (markdown
-                                    supported)</Label
+                                    >Job description (markdown supported)</Label
                                 >
                                 <textarea
                                     id="job_text"
                                     v-model="evaluationForm.job_text"
                                     name="job_text"
                                     rows="8"
-                                    class="min-h-[200px] w-full max-w-full resize-y rounded-lg border border-border/70 bg-background px-3 py-3 text-sm text-foreground shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+                                    class="min-h-[200px] w-full max-w-full resize-y rounded-lg border border-border/70 bg-background px-3 py-3 text-sm text-foreground shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/30 focus:outline-none"
                                     placeholder="## About the role&#10;&#10;Paste the responsibilities and qualifications..."
                                     :aria-invalid="
-                                        !!(evaluationForm.errors.job_text || globalErrors.job_text)
+                                        !!(
+                                            evaluationForm.errors.job_text ||
+                                            globalErrors.job_text
+                                        )
                                     "
                                 />
                                 <InputError
@@ -1185,20 +1209,23 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                     v-model="evaluationForm.notes"
                                     name="notes"
                                     rows="3"
-                                    class="w-full max-w-full resize-y rounded-lg border border-border/70 bg-background px-3 py-3 text-sm text-foreground shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+                                    class="w-full max-w-full resize-y rounded-lg border border-border/70 bg-background px-3 py-3 text-sm text-foreground shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/30 focus:outline-none"
                                     placeholder="Remind yourself why you ran this evaluation."
                                 />
-                                <InputError :message="evaluationForm.errors.notes" />
+                                <InputError
+                                    :message="evaluationForm.errors.notes"
+                                />
                             </div>
 
-                        <Button
-                            type="submit"
-                            :disabled="
-                                evaluationForm.processing || !canRunEvaluation
-                            "
-                            :aria-disabled="!canRunEvaluation"
-                            class="justify-center"
-                        >
+                            <Button
+                                type="submit"
+                                :disabled="
+                                    evaluationForm.processing ||
+                                    !canRunEvaluation
+                                "
+                                :aria-disabled="!canRunEvaluation"
+                                class="justify-center"
+                            >
                                 <CircleCheck class="mr-2 size-4" />
                                 Run evaluation
                             </Button>
@@ -1211,7 +1238,9 @@ const globalErrors = computed(() => page.props.errors ?? {});
                     >
                         <header class="flex items-center justify-between gap-3">
                             <div>
-                                <h2 class="text-lg font-semibold text-foreground">
+                                <h2
+                                    class="text-lg font-semibold text-foreground"
+                                >
                                     Tailored resumes
                                 </h2>
                                 <p class="text-sm text-muted-foreground">
@@ -1232,13 +1261,17 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                         class="flex flex-wrap items-start justify-between gap-3"
                                     >
                                         <div>
-                                            <p class="text-sm font-semibold text-foreground">
+                                            <p
+                                                class="text-sm font-semibold text-foreground"
+                                            >
                                                 {{
                                                     tailored.title ||
                                                     'Tailored resume'
                                                 }}
                                             </p>
-                                            <p class="text-xs text-muted-foreground">
+                                            <p
+                                                class="text-xs text-muted-foreground"
+                                            >
                                                 {{
                                                     formatDateTime(
                                                         tailored.created_at,
@@ -1258,7 +1291,8 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                     >
                                         {{
                                             tailored.job_description.title ||
-                                            tailored.job_description.source_label
+                                            tailored.job_description
+                                                .source_label
                                         }}
                                     </p>
                                     <div class="mt-3 space-y-2">
@@ -1266,7 +1300,11 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                             size="sm"
                                             variant="ghost"
                                             class="justify-start"
-                                            @click="toggleTailoredPreview(tailored.id)"
+                                            @click="
+                                                toggleTailoredPreview(
+                                                    tailored.id,
+                                                )
+                                            "
                                         >
                                             <FileText class="mr-2 size-4" />
                                             {{
@@ -1280,7 +1318,9 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                             class="rounded-lg border border-border/60 bg-background/80 p-3"
                                         >
                                             <MarkdownViewer
-                                                :content="tailored.content_markdown"
+                                                :content="
+                                                    tailored.content_markdown
+                                                "
                                             />
                                         </div>
                                     </div>
@@ -1311,34 +1351,40 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                 for every evaluation and tailored variation.
                             </p>
                         </header>
-                    <div
-                        class="rounded-xl border border-border/60 bg-background/80 p-4"
-                    >
                         <div
-                            v-if="isResumeProcessing"
-                            class="flex items-center gap-3 text-sm text-muted-foreground"
+                            class="rounded-xl border border-border/60 bg-background/80 p-4"
                         >
-                            <Loader2 class="size-5 animate-spin text-warning" />
-                            <span>
-                                Processing your PDF upload. Markdown preview will appear shortly.
-                            </span>
-                        </div>
-                        <div v-else-if="resumeProcessingFailed" class="space-y-2">
-                            <p class="text-sm font-semibold text-error">
-                                We couldn't process this PDF upload.
-                            </p>
-                            <p
-                                v-if="ingestionErrorMessage"
-                                class="text-xs text-muted-foreground"
+                            <div
+                                v-if="isResumeProcessing"
+                                class="flex items-center gap-3 text-sm text-muted-foreground"
                             >
-                                Error: {{ ingestionErrorMessage }}
-                            </p>
+                                <Loader2
+                                    class="size-5 animate-spin text-warning"
+                                />
+                                <span>
+                                    Processing your PDF upload. Markdown preview
+                                    will appear shortly.
+                                </span>
+                            </div>
+                            <div
+                                v-else-if="resumeProcessingFailed"
+                                class="space-y-2"
+                            >
+                                <p class="text-sm font-semibold text-error">
+                                    We couldn't process this PDF upload.
+                                </p>
+                                <p
+                                    v-if="ingestionErrorMessage"
+                                    class="text-xs text-muted-foreground"
+                                >
+                                    Error: {{ ingestionErrorMessage }}
+                                </p>
+                            </div>
+                            <MarkdownViewer
+                                v-else
+                                :content="resume.content_markdown"
+                            />
                         </div>
-                        <MarkdownViewer
-                            v-else
-                            :content="resume.content_markdown"
-                        />
-                    </div>
                     </div>
 
                     <div
@@ -1347,11 +1393,14 @@ const globalErrors = computed(() => page.props.errors ?? {});
                     >
                         <header class="flex items-center justify-between gap-3">
                             <div>
-                                <h2 class="text-lg font-semibold text-foreground">
+                                <h2
+                                    class="text-lg font-semibold text-foreground"
+                                >
                                     Evaluation history
                                 </h2>
                                 <p class="text-sm text-muted-foreground">
-                                    Review prior runs and jump to the job record for deeper context.
+                                    Review prior runs and jump to the job record
+                                    for deeper context.
                                 </p>
                             </div>
                             <Badge
@@ -1371,7 +1420,8 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                         v-if="evaluation.job_description.id"
                                         :href="
                                             jobsRoutes.show({
-                                                job: evaluation.job_description.id,
+                                                job: evaluation.job_description
+                                                    .id,
                                             }).url
                                         "
                                         class="group block rounded-xl border border-border/60 bg-background/70 p-4 text-left transition hover:border-primary/60 hover:bg-primary/5"
@@ -1380,10 +1430,16 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                             class="flex flex-wrap items-start justify-between gap-3"
                                         >
                                             <div class="space-y-1">
-                                                <p class="text-sm font-semibold text-foreground">
+                                                <p
+                                                    class="text-sm font-semibold text-foreground"
+                                                >
                                                     {{
-                                                        evaluation.job_description.title ||
-                                                        evaluation.job_description.source_label
+                                                        evaluation
+                                                            .job_description
+                                                            .title ||
+                                                        evaluation
+                                                            .job_description
+                                                            .source_label
                                                     }}
                                                 </p>
                                                 <p
@@ -1393,10 +1449,18 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                                     {{ evaluation.headline }}
                                                 </p>
                                                 <p
-                                                    v-if="evaluation.job_description.company"
+                                                    v-if="
+                                                        evaluation
+                                                            .job_description
+                                                            .company
+                                                    "
                                                     class="text-xs text-muted-foreground"
                                                 >
-                                                    {{ evaluation.job_description.company }}
+                                                    {{
+                                                        evaluation
+                                                            .job_description
+                                                            .company
+                                                    }}
                                                 </p>
                                             </div>
                                             <Badge
@@ -1407,7 +1471,10 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                                 "
                                             >
                                                 <Loader2
-                                                    v-if="evaluation.status === 'pending'"
+                                                    v-if="
+                                                        evaluation.status ===
+                                                        'pending'
+                                                    "
                                                     class="mr-1 size-3 animate-spin"
                                                 />
                                                 {{
@@ -1420,7 +1487,9 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                         <div
                                             class="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground"
                                         >
-                                            <span>{{ evaluation.model || '—' }}</span>
+                                            <span>{{
+                                                evaluation.model || '—'
+                                            }}</span>
                                             <span>•</span>
                                             <span>
                                                 {{
@@ -1444,17 +1513,31 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                             class="flex flex-wrap items-start justify-between gap-3"
                                         >
                                             <div class="space-y-1">
-                                                <p class="text-sm font-semibold text-foreground">
+                                                <p
+                                                    class="text-sm font-semibold text-foreground"
+                                                >
                                                     {{
-                                                        evaluation.job_description.title ||
-                                                        evaluation.job_description.source_label
+                                                        evaluation
+                                                            .job_description
+                                                            .title ||
+                                                        evaluation
+                                                            .job_description
+                                                            .source_label
                                                     }}
                                                 </p>
                                                 <p
-                                                    v-if="evaluation.job_description.company"
+                                                    v-if="
+                                                        evaluation
+                                                            .job_description
+                                                            .company
+                                                    "
                                                     class="text-xs text-muted-foreground"
                                                 >
-                                                    {{ evaluation.job_description.company }}
+                                                    {{
+                                                        evaluation
+                                                            .job_description
+                                                            .company
+                                                    }}
                                                 </p>
                                             </div>
                                             <Badge
@@ -1465,7 +1548,10 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                                 "
                                             >
                                                 <Loader2
-                                                    v-if="evaluation.status === 'pending'"
+                                                    v-if="
+                                                        evaluation.status ===
+                                                        'pending'
+                                                    "
                                                     class="mr-1 size-3 animate-spin"
                                                 />
                                                 {{
@@ -1475,8 +1561,11 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                                 }}
                                             </Badge>
                                         </div>
-                                        <p class="mt-3 text-xs text-muted-foreground">
-                                            Manual job description — no linked record yet.
+                                        <p
+                                            class="mt-3 text-xs text-muted-foreground"
+                                        >
+                                            Manual job description — no linked
+                                            record yet.
                                         </p>
                                     </div>
                                 </template>
@@ -1485,7 +1574,8 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                 v-else
                                 class="rounded-xl border border-dashed border-border/60 bg-background/80 p-6 text-sm text-muted-foreground"
                             >
-                                No evaluations yet. Run your first comparison to populate history.
+                                No evaluations yet. Run your first comparison to
+                                populate history.
                             </div>
                         </div>
                     </div>
