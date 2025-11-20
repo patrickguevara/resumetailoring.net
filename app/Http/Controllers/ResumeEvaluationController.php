@@ -116,6 +116,7 @@ class ResumeEvaluationController extends Controller
             'model' => $evaluation->model,
             'notes' => $evaluation->notes,
             'feedback_markdown' => $evaluation->feedback_markdown,
+            'feedback_data' => $evaluation->feedback_data,
             'error_message' => $evaluation->error_message,
             'tailored_count' => $evaluation->tailored_resumes_count ?? 0,
             'completed_at' => $evaluation->completed_at?->toIso8601String(),
