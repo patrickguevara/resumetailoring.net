@@ -81,6 +81,7 @@ const summaryGradient = computed(() => {
 
             <MarkdownViewer
                 :content="sections.summary ?? '_No summary available._'"
+                :show-container="false"
             />
         </section>
 
@@ -94,7 +95,10 @@ const summaryGradient = computed(() => {
                 <h3 class="mb-4 text-lg font-semibold text-foreground">
                     Relevant Experience
                 </h3>
-                <MarkdownViewer :content="sections.relevant_experience" />
+                <MarkdownViewer
+                    :content="sections.relevant_experience"
+                    :show-container="false"
+                />
             </section>
 
             <!-- Gaps -->
@@ -103,7 +107,7 @@ const summaryGradient = computed(() => {
                 class="rounded-2xl border border-border/60 bg-gradient-to-br from-background via-background to-muted/10 p-6 shadow-sm"
             >
                 <h3 class="mb-4 text-lg font-semibold text-foreground">Gaps</h3>
-                <MarkdownViewer :content="sections.gaps" />
+                <MarkdownViewer :content="sections.gaps" :show-container="false" />
             </section>
         </div>
 
@@ -115,7 +119,10 @@ const summaryGradient = computed(() => {
             <h3 class="mb-4 text-lg font-semibold text-foreground">
                 Recommendations
             </h3>
-            <MarkdownViewer :content="sections.recommendations" />
+            <MarkdownViewer
+                :content="sections.recommendations"
+                :show-container="false"
+            />
         </section>
     </div>
 

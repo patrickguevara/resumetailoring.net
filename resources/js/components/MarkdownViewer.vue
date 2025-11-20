@@ -15,12 +15,14 @@ const props = withDefaults(
         emptyLabel?: string;
         contentClass?: string;
         showToggle?: boolean;
+        showContainer?: boolean;
     }>(),
     {
         content: '',
         emptyLabel: 'No markdown content available.',
         contentClass: '',
         showToggle: false,
+        showContainer: true,
     },
 );
 
@@ -71,8 +73,13 @@ const rendered = computed(() =>
             <div
                 v-if="!isEmpty"
                 v-html="rendered"
-                class="overflow-auto rounded-md border border-border/60 bg-background/60 p-4 text-sm leading-relaxed text-foreground/90 shadow-inner dark:border-border/40 [&_a]:text-primary [&_a]:underline-offset-4 [&_a:hover]:underline [&_blockquote]:border-l-2 [&_blockquote]:border-border/60 [&_blockquote]:ps-3 [&_blockquote]:italic [&_code]:rounded [&_code]:bg-muted/80 [&_code]:px-1 [&_code]:py-px [&_h1]:text-xl [&_h1]:font-semibold [&_h2]:text-lg [&_h2]:font-semibold [&_h3]:text-base [&_h3]:font-semibold [&_li]:ps-1 [&_ol]:list-decimal [&_ol]:ps-5 [&_p]:leading-relaxed [&_p]:text-foreground/90 [&_pre]:overflow-auto [&_pre]:rounded [&_pre]:bg-muted/80 [&_pre]:p-3 [&_strong]:font-semibold [&_ul]:list-disc [&_ul]:ps-5"
-                :class="cn(contentClass)"
+                :class="[
+                    showContainer
+                        ? 'overflow-auto rounded-md border border-border/60 bg-background/60 p-4 shadow-inner dark:border-border/40'
+                        : '',
+                    'text-sm leading-relaxed text-foreground/90 [&_a]:text-primary [&_a]:underline-offset-4 [&_a:hover]:underline [&_blockquote]:border-l-2 [&_blockquote]:border-border/60 [&_blockquote]:ps-3 [&_blockquote]:italic [&_code]:rounded [&_code]:bg-muted/80 [&_code]:px-1 [&_code]:py-px [&_h1]:text-xl [&_h1]:font-semibold [&_h2]:text-lg [&_h2]:font-semibold [&_h3]:text-base [&_h3]:font-semibold [&_li]:ps-1 [&_ol]:list-decimal [&_ol]:ps-5 [&_p]:leading-relaxed [&_p]:text-foreground/90 [&_pre]:overflow-auto [&_pre]:rounded [&_pre]:bg-muted/80 [&_pre]:p-3 [&_strong]:font-semibold [&_ul]:list-disc [&_ul]:ps-5',
+                    cn(contentClass),
+                ]"
             />
             <p
                 v-else
