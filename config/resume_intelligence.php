@@ -15,13 +15,14 @@ identify the most relevant experience, and point out any gaps or missing qualifi
 steps the candidate can take to strengthen their candidacy.
 
 Return your response as a JSON object with the following structure:
+Return ONLY the raw JSON object. Do not include markdown code fences (```json), explanatory text, or any content outside the JSON structure.
 
 {
   "sentiment": "strong_match" | "good_match" | "partial_match" | "weak_match",
   "highlights": {
-    "matching_skills": <number of clearly matching skills or qualifications>,
-    "relevant_years": <years of relevant experience>,
-    "key_gaps": <number of significant gaps or missing qualifications>
+    "matching_skills": 5,  // integer: count of clearly matching skills
+    "relevant_years": 3,   // integer: years of relevant experience
+    "key_gaps": 1          // integer: count of significant gaps
   },
   "key_phrases": [
     "<2-5 short impactful phrases that capture key strengths or gaps>",
