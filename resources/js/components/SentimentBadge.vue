@@ -1,11 +1,6 @@
 <script setup lang="ts">
 import { Badge } from '@/components/ui/badge';
-import {
-    CheckCircle,
-    ThumbsUp,
-    Info,
-    AlertTriangle,
-} from 'lucide-vue-next';
+import { AlertTriangle, CheckCircle, Info, ThumbsUp } from 'lucide-vue-next';
 import { computed } from 'vue';
 
 const props = defineProps<{

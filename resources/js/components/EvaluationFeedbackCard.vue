@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import MarkdownViewer from '@/components/MarkdownViewer.vue';
-import SentimentBadge from '@/components/SentimentBadge.vue';
 import HighlightStats from '@/components/HighlightStats.vue';
 import KeyPhrasesList from '@/components/KeyPhrasesList.vue';
+import MarkdownViewer from '@/components/MarkdownViewer.vue';
+import SentimentBadge from '@/components/SentimentBadge.vue';
 import { computed } from 'vue';
 
 interface FeedbackData {
@@ -60,7 +60,7 @@ const summaryGradient = computed(() => {
                 summaryGradient,
             ]"
         >
-            <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+            <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
                 <h3 class="text-lg font-semibold text-foreground">
                     Summary of Fit
                 </h3>
@@ -91,7 +91,7 @@ const summaryGradient = computed(() => {
                 v-if="sections.relevant_experience"
                 class="rounded-2xl border border-border/60 bg-gradient-to-br from-background via-background to-accent/5 p-6 shadow-sm"
             >
-                <h3 class="text-lg font-semibold text-foreground mb-4">
+                <h3 class="mb-4 text-lg font-semibold text-foreground">
                     Relevant Experience
                 </h3>
                 <MarkdownViewer :content="sections.relevant_experience" />
@@ -102,9 +102,7 @@ const summaryGradient = computed(() => {
                 v-if="sections.gaps"
                 class="rounded-2xl border border-border/60 bg-gradient-to-br from-background via-background to-muted/10 p-6 shadow-sm"
             >
-                <h3 class="text-lg font-semibold text-foreground mb-4">
-                    Gaps
-                </h3>
+                <h3 class="mb-4 text-lg font-semibold text-foreground">Gaps</h3>
                 <MarkdownViewer :content="sections.gaps" />
             </section>
         </div>
@@ -114,7 +112,7 @@ const summaryGradient = computed(() => {
             v-if="sections.recommendations"
             class="rounded-2xl border border-border/60 bg-gradient-to-br from-primary/5 via-background to-background p-6 shadow-sm"
         >
-            <h3 class="text-lg font-semibold text-foreground mb-4">
+            <h3 class="mb-4 text-lg font-semibold text-foreground">
                 Recommendations
             </h3>
             <MarkdownViewer :content="sections.recommendations" />
@@ -122,10 +120,7 @@ const summaryGradient = computed(() => {
     </div>
 
     <!-- Fallback: Legacy Markdown Display -->
-    <div
-        v-else
-        class="rounded-xl border border-border/60 bg-background/80 p-4"
-    >
+    <div v-else class="rounded-xl border border-border/60 bg-background/80 p-4">
         <MarkdownViewer
             :content="
                 fallbackMarkdown ??

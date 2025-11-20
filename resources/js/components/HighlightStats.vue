@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { CheckCircle, Briefcase, Target } from 'lucide-vue-next';
+import { Briefcase, CheckCircle, Target } from 'lucide-vue-next';
 
 defineProps<{
     highlights: {
@@ -19,9 +19,7 @@ defineProps<{
             <CheckCircle class="size-4 text-success" />
             <span class="text-sm font-medium text-foreground">
                 {{ highlights.matching_skills }}
-                {{
-                    highlights.matching_skills === 1 ? 'skill' : 'skills'
-                }}
+                {{ highlights.matching_skills === 1 ? 'skill' : 'skills' }}
                 match
             </span>
         </div>
