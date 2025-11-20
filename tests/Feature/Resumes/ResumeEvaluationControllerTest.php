@@ -60,6 +60,7 @@ class ResumeEvaluationControllerTest extends TestCase
             ->andReturn([
                 'model' => 'gpt-test',
                 'content' => "Generated feedback headline\nFull feedback body",
+                'structured' => null,
             ]);
 
         $this->app->instance(ResumeIntelligenceService::class, $service);
