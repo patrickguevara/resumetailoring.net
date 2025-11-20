@@ -397,16 +397,47 @@ PROMPT;
             ];
         }
 
+        // Validate sentiment is one of the four expected values
+        $validSentiments = ['excellent_match', 'good_match', 'partial_match', 'weak_match'];
+        $sentiment = $decoded['sentiment'] ?? 'good_match';
+        if (! in_array($sentiment, $validSentiments, true)) {
+            $sentiment = 'good_match';
+        }
+
+        // Validate highlights structure (should be array with integer keys)
+        $highlights = $decoded['highlights'] ?? null;
+        if ($highlights !== null && is_array($highlights)) {
+            $highlights = array_map('intval', array_values($highlights));
+        } else {
+            $highlights = null;
+        }
+
+        // Validate key_phrases is actually an array of strings
+        $keyPhrases = $decoded['key_phrases'] ?? [];
+        if (! is_array($keyPhrases)) {
+            $keyPhrases = [];
+        } else {
+            $keyPhrases = array_filter(array_map(function ($phrase) {
+                return is_string($phrase) ? $phrase : null;
+            }, $keyPhrases), fn ($phrase) => $phrase !== null);
+        }
+
+        // Validate sections exists and is an array before accessing nested keys
+        $sections = $decoded['sections'] ?? [];
+        if (! is_array($sections)) {
+            $sections = [];
+        }
+
         // Validate and normalize structure
         $structured = [
-            'sentiment' => $decoded['sentiment'] ?? 'good_match',
-            'highlights' => $decoded['highlights'] ?? null,
-            'key_phrases' => $decoded['key_phrases'] ?? [],
+            'sentiment' => $sentiment,
+            'highlights' => $highlights,
+            'key_phrases' => array_values($keyPhrases),
             'sections' => [
-                'summary' => $decoded['sections']['summary'] ?? '',
-                'relevant_experience' => $decoded['sections']['relevant_experience'] ?? null,
-                'gaps' => $decoded['sections']['gaps'] ?? null,
-                'recommendations' => $decoded['sections']['recommendations'] ?? null,
+                'summary' => $sections['summary'] ?? '',
+                'relevant_experience' => $sections['relevant_experience'] ?? null,
+                'gaps' => $sections['gaps'] ?? null,
+                'recommendations' => $sections['recommendations'] ?? null,
             ],
         ];
 
