@@ -1696,6 +1696,99 @@ const globalErrors = computed(() => page.props.errors ?? {});
                     </div>
 
                     <div
+                        id="evaluation-history"
+                        class="rounded-2xl border border-border/60 bg-card/80 p-6 shadow-sm"
+                    >
+                        <header
+                            class="flex items-center justify-between gap-3 cursor-pointer hover:bg-muted/20 transition rounded-lg -m-2 p-2"
+                            @click="showEvaluationHistory = !showEvaluationHistory"
+                        >
+                            <div>
+                                <h2 class="text-lg font-semibold text-foreground">
+                                    Past evaluations ({{ evaluations.length }})
+                                </h2>
+                                <p v-if="!showEvaluationHistory" class="text-sm text-muted-foreground">
+                                    Click to view evaluation history
+                                </p>
+                            </div>
+                            <ChevronDown
+                                class="size-5 text-muted-foreground transition-transform duration-200"
+                                :class="showEvaluationHistory ? 'rotate-180' : ''"
+                            />
+                        </header>
+
+                        <div v-if="showEvaluationHistory" class="mt-4 space-y-3">
+                            <template v-if="hasEvaluations">
+                                <button
+                                    v-for="evaluation in evaluations"
+                                    :key="evaluation.id"
+                                    type="button"
+                                    :class="[
+                                        'w-full rounded-xl border p-4 text-left transition',
+                                        activeEvaluationId === evaluation.id
+                                            ? 'border-primary bg-primary/10 shadow-sm'
+                                            : 'border-border/60 bg-background/70 hover:border-primary/60 hover:bg-primary/5',
+                                    ]"
+                                    @click="switchToEvaluation(evaluation.id)"
+                                >
+                                    <div class="flex items-start gap-3">
+                                        <!-- Active indicator circle -->
+                                        <div class="flex-shrink-0 mt-1">
+                                            <div
+                                                :class="[
+                                                    'size-2 rounded-full',
+                                                    activeEvaluationId === evaluation.id
+                                                        ? 'bg-primary'
+                                                        : 'bg-border'
+                                                ]"
+                                            />
+                                        </div>
+
+                                        <div class="flex-1 min-w-0">
+                                            <div class="flex flex-wrap items-start justify-between gap-3">
+                                                <div class="space-y-1 min-w-0">
+                                                    <p class="text-sm font-semibold text-foreground">
+                                                        {{ evaluation.resume.title || 'Resume' }}
+                                                    </p>
+                                                    <p
+                                                        v-if="evaluation.headline"
+                                                        class="text-xs text-muted-foreground"
+                                                    >
+                                                        {{ evaluation.headline }}
+                                                    </p>
+                                                </div>
+                                                <Badge
+                                                    :class="evaluationStatusClass(evaluation.status)"
+                                                >
+                                                    <Loader2
+                                                        v-if="evaluation.status === 'pending'"
+                                                        class="mr-1 size-3 animate-spin"
+                                                    />
+                                                    {{ evaluationStatusLabel(evaluation.status) }}
+                                                </Badge>
+                                            </div>
+                                            <div class="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                                                <span>{{ evaluation.model || '—' }}</span>
+                                                <span>•</span>
+                                                <span>
+                                                    {{ formatDateTime(evaluation.completed_at) || 'Pending' }}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </button>
+                            </template>
+                            <div
+                                v-else
+                                class="rounded-xl border border-dashed border-border/60 bg-background/80 p-6 text-sm text-muted-foreground"
+                            >
+                                Evaluations will appear here once you compare a
+                                resume with this job.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div
                         id="job-description"
                         class="rounded-2xl border border-border/60 bg-card/80 p-6 shadow-sm"
                     >
@@ -1934,110 +2027,6 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                     </p>
                                 </fieldset>
                             </form>
-                        </div>
-                    </div>
-
-                    <div
-                        id="evaluation-history"
-                        class="rounded-2xl border border-border/60 bg-card/80 p-6 shadow-sm"
-                    >
-                        <header class="flex items-center justify-between gap-3">
-                            <div>
-                                <h2
-                                    class="text-lg font-semibold text-foreground"
-                                >
-                                    Evaluation history
-                                </h2>
-                                <p class="text-sm text-muted-foreground">
-                                    Compare how each resume performed against
-                                    this job over time.
-                                </p>
-                            </div>
-                            <Badge
-                                class="border-border/60 bg-muted/40 text-muted-foreground"
-                            >
-                                {{ evaluations.length }} total
-                            </Badge>
-                        </header>
-
-                        <div class="mt-4 space-y-3">
-                            <template v-if="hasEvaluations">
-                                <button
-                                    v-for="evaluation in evaluations"
-                                    :key="evaluation.id"
-                                    type="button"
-                                    :class="[
-                                        'w-full rounded-xl border p-4 text-left transition',
-                                        activeEvaluationId === evaluation.id
-                                            ? 'border-primary bg-primary/10 shadow-sm'
-                                            : 'border-border/60 bg-background/70 hover:border-primary/60 hover:bg-primary/5',
-                                    ]"
-                                    @click="activeEvaluationId = evaluation.id"
-                                >
-                                    <div
-                                        class="flex flex-wrap items-start justify-between gap-3"
-                                    >
-                                        <div class="space-y-1">
-                                            <p
-                                                class="text-sm font-semibold text-foreground"
-                                            >
-                                                {{
-                                                    evaluation.resume.title ||
-                                                    'Resume'
-                                                }}
-                                            </p>
-                                            <p
-                                                v-if="evaluation.headline"
-                                                class="text-xs text-muted-foreground"
-                                            >
-                                                {{ evaluation.headline }}
-                                            </p>
-                                        </div>
-                                        <Badge
-                                            :class="
-                                                evaluationStatusClass(
-                                                    evaluation.status,
-                                                )
-                                            "
-                                        >
-                                            <Loader2
-                                                v-if="
-                                                    evaluation.status ===
-                                                    'pending'
-                                                "
-                                                class="mr-1 size-3 animate-spin"
-                                            />
-                                            {{
-                                                evaluationStatusLabel(
-                                                    evaluation.status,
-                                                )
-                                            }}
-                                        </Badge>
-                                    </div>
-                                    <div
-                                        class="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground"
-                                    >
-                                        <span>
-                                            {{ evaluation.model || '—' }}
-                                        </span>
-                                        <span>•</span>
-                                        <span>
-                                            {{
-                                                formatDateTime(
-                                                    evaluation.completed_at,
-                                                ) || 'Pending'
-                                            }}
-                                        </span>
-                                    </div>
-                                </button>
-                            </template>
-                            <div
-                                v-else
-                                class="rounded-xl border border-dashed border-border/60 bg-background/80 p-6 text-sm text-muted-foreground"
-                            >
-                                Evaluations will appear here once you compare a
-                                resume with this job.
-                            </div>
                         </div>
                     </div>
             </div>
