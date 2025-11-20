@@ -510,6 +510,7 @@ const tailorErrors = reactive<Record<number, string | null>>({});
 const expandedTailored = reactive<Record<number, boolean>>({});
 const showCompanyResearch = ref(true);
 const companyResearchProcessing = ref(false);
+const showEvaluationForm = ref(false);
 const companyResearchError = ref<string | null>(null);
 const isResearchRunning = computed(
     () => companyResearchProcessing.value || researchForm.processing,
@@ -1182,21 +1183,34 @@ const globalErrors = computed(() => page.props.errors ?? {});
                         id="run-evaluation"
                         class="rounded-2xl border border-border/60 bg-card/80 p-6 shadow-sm"
                     >
-                        <header class="space-y-1">
-                            <h2 class="text-lg font-semibold text-foreground">
-                                Run a new evaluation
-                            </h2>
-                            <p class="text-sm text-muted-foreground">
-                                Select a resume and model to compare against
-                                this job. Optionally refresh the posting via a
-                                new URL.
-                            </p>
+                        <header class="flex items-start justify-between gap-4">
+                            <div class="space-y-1 flex-1">
+                                <h2 class="text-lg font-semibold text-foreground">
+                                    Run a new evaluation
+                                </h2>
+                                <p
+                                    v-if="!showEvaluationForm"
+                                    class="text-sm text-muted-foreground"
+                                >
+                                    Select a resume and model to compare against
+                                    this job.
+                                </p>
+                            </div>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                @click="showEvaluationForm = !showEvaluationForm"
+                            >
+                                {{ showEvaluationForm ? 'Cancel' : 'New Evaluation' }}
+                            </Button>
                         </header>
 
-                        <div
-                            v-if="evaluationBlockedByLimit"
-                            class="mt-4 rounded-xl border border-primary/40 bg-primary/10 p-4 text-sm text-primary"
-                        >
+                        <div v-if="showEvaluationForm">
+                            <div
+                                v-if="evaluationBlockedByLimit"
+                                class="mt-4 rounded-xl border border-primary/40 bg-primary/10 p-4 text-sm text-primary"
+                            >
                             <p class="font-semibold text-foreground">
                                 Free evaluation used
                             </p>
@@ -1345,6 +1359,7 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                 Run evaluation
                             </Button>
                         </form>
+                        </div>
                     </div>
 
                     <div
