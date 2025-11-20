@@ -74,6 +74,7 @@ class ProcessResumeEvaluation implements ShouldQueue
                 'status' => ResumeEvaluation::STATUS_COMPLETED,
                 'model' => $result['model'],
                 'feedback_markdown' => $result['content'],
+                'feedback_structured' => $result['structured'],
                 'headline' => (string) $headline ?: null,
                 'completed_at' => now(),
                 'error_message' => null,

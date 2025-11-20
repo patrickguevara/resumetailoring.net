@@ -26,6 +26,7 @@ class ResumeEvaluation extends Model
         'model',
         'headline',
         'feedback_markdown',
+        'feedback_structured',
         'notes',
         'error_message',
         'completed_at',
@@ -33,6 +34,7 @@ class ResumeEvaluation extends Model
 
     protected $casts = [
         'completed_at' => 'datetime',
+        'feedback_structured' => 'array',
     ];
 
     public function user(): BelongsTo
@@ -63,5 +65,28 @@ class ResumeEvaluation extends Model
     public function aiPrompts(): MorphMany
     {
         return $this->morphMany(AiPrompt::class, 'promptable');
+    }
+
+    /**
+     * Get feedback data with smart fallback for legacy evaluations.
+     */
+    public function getFeedbackDataAttribute(): array
+    {
+        if ($this->feedback_structured) {
+            return $this->feedback_structured;
+        }
+
+        // Fallback for old evaluations without structured data
+        return [
+            'sentiment' => 'good_match',
+            'highlights' => null,
+            'key_phrases' => [],
+            'sections' => [
+                'summary' => $this->feedback_markdown ?? '',
+                'relevant_experience' => null,
+                'gaps' => null,
+                'recommendations' => null,
+            ],
+        ];
     }
 }

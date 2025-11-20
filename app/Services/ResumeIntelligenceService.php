@@ -20,7 +20,7 @@ class ResumeIntelligenceService
     /**
      * Generate evaluation feedback comparing a resume to a job description.
      *
-     * @return array{model: string, content: string, system_prompt: string, prompt: string, prompt_log: AiPrompt}
+     * @return array{model: string, content: string, structured: array, system_prompt: string, prompt: string, prompt_log: AiPrompt}
      */
     public function evaluate(
         Resume $resume,
@@ -54,9 +54,16 @@ class ResumeIntelligenceService
             $prompt
         );
 
+        // Parse JSON response into structured format
+        $structured = $this->parseStructuredFeedback($payload);
+
+        // Generate markdown from structured sections for backward compatibility
+        $markdown = $this->generateMarkdownFromStructured($structured);
+
         return [
             'model' => $model,
-            'content' => $payload,
+            'content' => $markdown,
+            'structured' => $structured,
             'system_prompt' => $systemPrompt,
             'prompt' => $prompt,
             'prompt_log' => $promptLog,
@@ -363,5 +370,94 @@ Evaluation feedback:
 Existing resume:
 {$resumeText}
 PROMPT;
+    }
+
+    /**
+     * Parse and validate structured JSON feedback from AI response.
+     *
+     * @return array{sentiment: string, highlights: array|null, key_phrases: array, sections: array}
+     */
+    private function parseStructuredFeedback(string $payload): array
+    {
+        // Try to parse JSON
+        $decoded = json_decode($payload, true);
+
+        if (json_last_error() !== JSON_ERROR_NONE || ! is_array($decoded)) {
+            // Fallback: treat as plain markdown
+            return [
+                'sentiment' => 'good_match',
+                'highlights' => null,
+                'key_phrases' => [],
+                'sections' => [
+                    'summary' => $payload,
+                    'relevant_experience' => null,
+                    'gaps' => null,
+                    'recommendations' => null,
+                ],
+            ];
+        }
+
+        // Validate sentiment is one of the four expected values
+        $validSentiments = ['excellent_match', 'good_match', 'partial_match', 'weak_match'];
+        $sentiment = $decoded['sentiment'] ?? 'good_match';
+        if (! in_array($sentiment, $validSentiments, true)) {
+            $sentiment = 'good_match';
+        }
+
+        // Validate highlights structure (should be array with integer keys)
+        $highlights = $decoded['highlights'] ?? null;
+        if ($highlights !== null && is_array($highlights)) {
+            $highlights = array_map('intval', array_values($highlights));
+        } else {
+            $highlights = null;
+        }
+
+        // Validate key_phrases is actually an array of strings
+        $keyPhrases = $decoded['key_phrases'] ?? [];
+        if (! is_array($keyPhrases)) {
+            $keyPhrases = [];
+        } else {
+            $keyPhrases = array_filter(array_map(function ($phrase) {
+                return is_string($phrase) ? $phrase : null;
+            }, $keyPhrases), fn ($phrase) => $phrase !== null);
+        }
+
+        // Validate sections exists and is an array before accessing nested keys
+        $sections = $decoded['sections'] ?? [];
+        if (! is_array($sections)) {
+            $sections = [];
+        }
+
+        // Validate and normalize structure
+        $structured = [
+            'sentiment' => $sentiment,
+            'highlights' => $highlights,
+            'key_phrases' => array_values($keyPhrases),
+            'sections' => [
+                'summary' => $sections['summary'] ?? '',
+                'relevant_experience' => $sections['relevant_experience'] ?? null,
+                'gaps' => $sections['gaps'] ?? null,
+                'recommendations' => $sections['recommendations'] ?? null,
+            ],
+        ];
+
+        return $structured;
+    }
+
+    /**
+     * Generate flattened markdown from structured sections for backward compatibility.
+     */
+    private function generateMarkdownFromStructured(array $structured): string
+    {
+        $sections = $structured['sections'] ?? [];
+
+        $parts = array_filter([
+            $sections['summary'] ?? null,
+            $sections['relevant_experience'] ?? null,
+            $sections['gaps'] ?? null,
+            $sections['recommendations'] ?? null,
+        ]);
+
+        return implode("\n\n---\n\n", $parts);
     }
 }
