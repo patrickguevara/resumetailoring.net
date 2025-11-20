@@ -10,8 +10,8 @@ use App\Models\User;
 use App\Services\ResumeIntelligenceService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
-use Mockery;
 use Illuminate\Support\Str;
+use Mockery;
 use Tests\TestCase;
 
 class ResumeEvaluationControllerTest extends TestCase

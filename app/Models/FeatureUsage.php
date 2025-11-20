@@ -36,4 +36,3 @@ class FeatureUsage extends Model
         return $this->belongsTo(User::class);
     }
 }
-

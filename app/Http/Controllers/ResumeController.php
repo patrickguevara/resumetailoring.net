@@ -16,9 +16,7 @@ use Inertia\Inertia;
 
 class ResumeController extends Controller
 {
-    public function __construct(private readonly UsageMeter $usageMeter)
-    {
-    }
+    public function __construct(private readonly UsageMeter $usageMeter) {}
 
     public function index(Request $request)
     {

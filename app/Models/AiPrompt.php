@@ -12,7 +12,9 @@ class AiPrompt extends Model
     use HasFactory;
 
     public const CATEGORY_EVALUATION = 'evaluation';
+
     public const CATEGORY_TAILOR = 'tailor';
+
     public const CATEGORY_RESEARCH = 'research';
 
     protected $fillable = [
@@ -35,4 +37,3 @@ class AiPrompt extends Model
         return $this->belongsTo(User::class);
     }
 }
-

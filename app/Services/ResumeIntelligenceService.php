@@ -6,8 +6,8 @@ use App\Models\AiPrompt;
 use App\Models\JobDescription;
 use App\Models\Resume;
 use App\Models\ResumeEvaluation;
-use Illuminate\Http\Client\RequestException;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
 
@@ -15,8 +15,7 @@ class ResumeIntelligenceService
 {
     public function __construct(
         private readonly JobDescriptionFetcher $jobFetcher
-    ) {
-    }
+    ) {}
 
     /**
      * Generate evaluation feedback comparing a resume to a job description.
@@ -258,7 +257,7 @@ PROMPT;
     /**
      * Normalise the OpenAI Responses API payload into a plain text string.
      *
-     * @param array<string, mixed> $data
+     * @param  array<string, mixed>  $data
      */
     private function extractResponseText(array $data): string
     {

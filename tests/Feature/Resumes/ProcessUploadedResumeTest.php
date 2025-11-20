@@ -2,7 +2,6 @@
 
 use App\Events\ResumeUpdated;
 use App\Jobs\ProcessUploadedResume;
-use App\Models\Resume;
 use App\Models\User;
 use App\Services\ResumePdfExtractor;
 use Illuminate\Support\Facades\Event;

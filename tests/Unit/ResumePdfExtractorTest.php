@@ -24,7 +24,7 @@ it('converts parsed pdf text into normalized markdown', function () {
         $markdown = $extractor->extract($path);
 
         expect($markdown)
-            ->toContain("## EXPERIENCE")
+            ->toContain('## EXPERIENCE')
             ->and($markdown)->toContain('- Led cross-functional teams')
             ->and($markdown)->toContain('Education');
     } finally {

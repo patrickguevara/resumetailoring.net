@@ -71,4 +71,3 @@ class ResumeUpdated implements ShouldBroadcast
             ->all();
     }
 }
-

@@ -2,14 +2,14 @@
 
 namespace App\Services;
 
-use Illuminate\Http\Client\RequestException;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Str;
 use DOMDocument;
 use DOMElement;
 use DOMNode;
 use DOMText;
 use DOMXPath;
+use Illuminate\Http\Client\RequestException;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 use RuntimeException;
 
 class JobDescriptionFetcher
@@ -48,9 +48,9 @@ class JobDescriptionFetcher
         ) {
             throw new RuntimeException(
                 'The site redirected to a generic careers page. Some job boards rely on query '
-                . 'parameters that are stripped when accessed without a browser session. Try using '
-                . "a direct job posting link (e.g., a 'View job' or 'Print view' URL) or copy the job "
-                . 'description text and paste it manually.'
+                .'parameters that are stripped when accessed without a browser session. Try using '
+                ."a direct job posting link (e.g., a 'View job' or 'Print view' URL) or copy the job "
+                .'description text and paste it manually.'
             );
         }
 
@@ -120,8 +120,7 @@ class JobDescriptionFetcher
     /**
      * Normalize URI details, even if we receive a string or Uri object.
      *
-     * @param string|\Psr\Http\Message\UriInterface $uri
-     *
+     * @param  string|\Psr\Http\Message\UriInterface  $uri
      * @return array<string, string>
      */
     private function parseUrl($uri): array
@@ -140,7 +139,7 @@ class JobDescriptionFetcher
     {
         return [
             'User-Agent' => 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) '
-                . 'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
+                .'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
             'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
             'Accept-Language' => 'en-US,en;q=0.9',
         ];
@@ -148,7 +147,7 @@ class JobDescriptionFetcher
 
     private function createDocument(string $html): DOMDocument
     {
-        $document = new DOMDocument();
+        $document = new DOMDocument;
 
         libxml_use_internal_errors(true);
 
@@ -169,7 +168,7 @@ class JobDescriptionFetcher
         }
 
         if (! str_contains($html, '<?xml')) {
-            return '<?xml encoding="utf-8" ?>' . $html;
+            return '<?xml encoding="utf-8" ?>'.$html;
         }
 
         return $html;
@@ -254,7 +253,7 @@ class JobDescriptionFetcher
     }
 
     /**
-     * @param array<int, string> $candidates
+     * @param  array<int, string>  $candidates
      */
     private function chooseBestDescription(array $candidates): string
     {
@@ -318,7 +317,7 @@ class JobDescriptionFetcher
     }
 
     /**
-     * @param mixed $data
+     * @param  mixed  $data
      */
     private function findJobPostingDescription($data): ?string
     {
@@ -369,7 +368,7 @@ class JobDescriptionFetcher
     private function convertHtmlFragmentToMarkdown(string $html): string
     {
         $html = str_replace("\u{00A0}", ' ', $html);
-        $document = $this->createDocument('<html><body>' . $html . '</body></html>');
+        $document = $this->createDocument('<html><body>'.$html.'</body></html>');
         $body = $document->getElementsByTagName('body')->item(0);
 
         if (! $body instanceof DOMNode) {
@@ -483,7 +482,7 @@ class JobDescriptionFetcher
             return null;
         }
 
-        return str_repeat('#', $level) . ' ' . $content;
+        return str_repeat('#', $level).' '.$content;
     }
 
     private function renderParagraph(DOMElement $element): ?string
@@ -559,7 +558,7 @@ class JobDescriptionFetcher
         }
 
         $lines = preg_split("/\r\n|\r|\n/", $content) ?: [];
-        $quoted = array_map(static fn ($line) => '> ' . ltrim($line), $lines);
+        $quoted = array_map(static fn ($line) => '> '.ltrim($line), $lines);
 
         return implode("\n", $quoted);
     }
@@ -580,7 +579,7 @@ class JobDescriptionFetcher
 
         $trimmed = rtrim($text, "\n");
 
-        return "```\n" . $trimmed . "\n```";
+        return "```\n".$trimmed."\n```";
     }
 
     private function renderTable(DOMElement $element): ?string
@@ -597,7 +596,7 @@ class JobDescriptionFetcher
             }
 
             if (! empty($cells)) {
-                $rows[] = '| ' . implode(' | ', $cells) . ' |';
+                $rows[] = '| '.implode(' | ', $cells).' |';
             }
         }
 
@@ -608,7 +607,7 @@ class JobDescriptionFetcher
         $header = $rows[0];
         $columnCount = substr_count($header, '|') - 1;
         $separatorCells = array_fill(0, max(0, $columnCount), '---');
-        $separator = '| ' . implode(' | ', $separatorCells) . ' |';
+        $separator = '| '.implode(' | ', $separatorCells).' |';
 
         if ($columnCount > 0) {
             array_splice($rows, 1, 0, [$separator]);
@@ -675,7 +674,7 @@ class JobDescriptionFetcher
             return '';
         }
 
-        return $wrapper . $content . $wrapper;
+        return $wrapper.$content.$wrapper;
     }
 
     private function renderAnchor(DOMElement $element): string
@@ -691,7 +690,7 @@ class JobDescriptionFetcher
             $content = $href;
         }
 
-        return '[' . $content . '](' . $href . ')';
+        return '['.$content.']('.$href.')';
     }
 
     private function normalizeInlineText(?string $text): string

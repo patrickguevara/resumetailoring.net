@@ -10,17 +10,15 @@ use App\Models\Resume;
 use App\Models\ResumeEvaluation;
 use App\Services\UsageMeter;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class ResumeEvaluationController extends Controller
 {
-    public function __construct(private readonly UsageMeter $usageMeter)
-    {
-    }
+    public function __construct(private readonly UsageMeter $usageMeter) {}
 
     public function store(
         StoreResumeEvaluationRequest $request,

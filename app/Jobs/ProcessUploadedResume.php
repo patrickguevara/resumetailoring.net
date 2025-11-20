@@ -99,4 +99,3 @@ class ProcessUploadedResume implements ShouldQueue
         }
     }
 }
-

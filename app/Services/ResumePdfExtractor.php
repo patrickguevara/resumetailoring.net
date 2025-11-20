@@ -9,8 +9,7 @@ class ResumePdfExtractor
 {
     public function __construct(
         private readonly Parser $parser
-    ) {
-    }
+    ) {}
 
     /**
      * Parse a PDF resume into normalized markdown content.
@@ -77,16 +76,19 @@ class ResumePdfExtractor
         foreach ($lines as $line) {
             if ($line === '') {
                 $markdownLines[] = '';
+
                 continue;
             }
 
             if ($this->isHeading($line)) {
                 $markdownLines[] = '## '.$line;
+
                 continue;
             }
 
             if ($bullet = $this->normalizeBullet($line)) {
                 $markdownLines[] = $bullet;
+
                 continue;
             }
 

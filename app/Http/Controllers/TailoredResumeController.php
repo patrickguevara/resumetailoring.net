@@ -9,14 +9,12 @@ use App\Models\ResumeEvaluation;
 use App\Models\TailoredResume;
 use App\Services\UsageMeter;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 
 class TailoredResumeController extends Controller
 {
-    public function __construct(private readonly UsageMeter $usageMeter)
-    {
-    }
+    public function __construct(private readonly UsageMeter $usageMeter) {}
 
     public function store(
         StoreTailoredResumeRequest $request,

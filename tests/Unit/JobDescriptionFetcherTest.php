@@ -43,7 +43,7 @@ it('extracts visible job description content as markdown', function () {
         'https://example.com/job' => Http::response($html, 200, ['Content-Type' => 'text/html; charset=UTF-8']),
     ]);
 
-    $fetcher = new JobDescriptionFetcher();
+    $fetcher = new JobDescriptionFetcher;
     $markdown = $fetcher->fetch('https://example.com/job');
 
     $expected = <<<'MARKDOWN'
@@ -90,7 +90,7 @@ it('prefers structured data descriptions when visible markup is sparse', functio
         'https://example.com/json-ld-job' => Http::response($html, 200, ['Content-Type' => 'text/html; charset=UTF-8']),
     ]);
 
-    $fetcher = new JobDescriptionFetcher();
+    $fetcher = new JobDescriptionFetcher;
     $markdown = $fetcher->fetch('https://example.com/json-ld-job');
 
     $expected = <<<'MARKDOWN'

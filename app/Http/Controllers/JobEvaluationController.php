@@ -13,9 +13,7 @@ use Illuminate\Http\RedirectResponse;
 
 class JobEvaluationController extends Controller
 {
-    public function __construct(private readonly UsageMeter $usageMeter)
-    {
-    }
+    public function __construct(private readonly UsageMeter $usageMeter) {}
 
     public function store(
         StoreJobEvaluationRequest $request,

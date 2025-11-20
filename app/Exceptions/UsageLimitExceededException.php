@@ -25,7 +25,7 @@ class UsageLimitExceededException extends Exception
 
         $prefix = $this->limit !== null && $this->limit > 0
             ? "You've used your {$this->limit} free {$this->feature->label()}."
-            : "This action is reserved for paid members.";
+            : 'This action is reserved for paid members.';
 
         return trim(sprintf(
             '%s Upgrade to %s for unlimited access.',

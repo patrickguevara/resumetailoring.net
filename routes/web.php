@@ -9,8 +9,8 @@ use App\Http\Controllers\ResumeController;
 use App\Http\Controllers\ResumeEvaluationController;
 use App\Http\Controllers\TailoredResumeController;
 use Illuminate\Support\Facades\Route;
-use Laravel\Cashier\Http\Controllers\WebhookController as CashierWebhookController;
 use Inertia\Inertia;
+use Laravel\Cashier\Http\Controllers\WebhookController as CashierWebhookController;
 
 Route::get('/', function () {
     return Inertia::render('Welcome');
