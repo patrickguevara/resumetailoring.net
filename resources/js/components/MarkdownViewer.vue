@@ -14,11 +14,13 @@ const props = withDefaults(
         content?: string | null;
         emptyLabel?: string;
         contentClass?: string;
+        showToggle?: boolean;
     }>(),
     {
         content: '',
         emptyLabel: 'No markdown content available.',
         contentClass: '',
+        showToggle: false,
     },
 );
 
@@ -40,7 +42,7 @@ const rendered = computed(() =>
 
 <template>
     <div class="space-y-3">
-        <div class="flex items-center justify-end">
+        <div v-if="showToggle" class="flex items-center justify-end">
             <div
                 class="inline-flex items-center gap-1 rounded-md border border-border/60 bg-muted/70 p-1 text-xs font-medium text-muted-foreground dark:border-border/40"
             >
