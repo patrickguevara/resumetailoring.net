@@ -1815,41 +1815,31 @@ const globalErrors = computed(() => page.props.errors ?? {});
 
                     <div
                         id="company-research"
-                        class="rounded-2xl border border-border/60 bg-card/80 p-6 shadow-sm"
+                        class="rounded-2xl border border-border/50 bg-card/80 p-6 shadow-sm"
                     >
-                        <header class="flex items-center justify-between gap-3">
-                            <div>
-                                <h2
-                                    class="text-lg font-semibold text-foreground"
-                                >
-                                    Company research
-                                </h2>
-                                <p class="text-sm text-muted-foreground">
-                                    Generate a briefing to prepare for outreach
-                                    and interviews. Update the company name and
-                                    focus areas as needed.
-                                </p>
-                            </div>
-                            <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                class="gap-1 text-sm font-medium text-muted-foreground hover:text-foreground"
-                                :aria-expanded="showCompanyResearch"
-                                @click="
-                                    showCompanyResearch = !showCompanyResearch
-                                "
-                            >
-                                <span>
-                                    {{ showCompanyResearch ? 'Hide' : 'Show' }}
-                                </span>
+                        <header
+                            class="cursor-pointer hover:bg-muted/20 transition rounded-lg -m-2 p-2"
+                            @click="showCompanyResearch = !showCompanyResearch"
+                        >
+                            <div class="flex items-center justify-between gap-3">
+                                <div>
+                                    <h2
+                                        class="text-lg font-semibold text-foreground"
+                                    >
+                                        Company research
+                                    </h2>
+                                    <p
+                                        v-if="!showCompanyResearch"
+                                        class="text-sm text-muted-foreground"
+                                    >
+                                        Generate a briefing to prepare for interviews
+                                    </p>
+                                </div>
                                 <ChevronDown
-                                    class="size-4 transition-transform duration-200"
-                                    :class="
-                                        showCompanyResearch ? 'rotate-180' : ''
-                                    "
+                                    class="size-5 text-muted-foreground transition-transform duration-200"
+                                    :class="showCompanyResearch ? 'rotate-180' : ''"
                                 />
-                            </Button>
+                            </div>
                         </header>
 
                         <div v-if="showCompanyResearch" class="mt-4 space-y-6">
