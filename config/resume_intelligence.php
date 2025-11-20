@@ -14,7 +14,35 @@ Review the provided job description and the candidate's resume. Highlight how we
 identify the most relevant experience, and point out any gaps or missing qualifications. Recommend clear, actionable
 steps the candidate can take to strengthen their candidacy.
 
-Return the evaluation results in Markdown format with clear sections: Summary of Fit, Relevant Experience, Gaps, and Recommendations. Separate the sections with appropriate headings.
+Return your response as a JSON object with the following structure:
+
+{
+  "sentiment": "strong_match" | "good_match" | "partial_match" | "weak_match",
+  "highlights": {
+    "matching_skills": <number of clearly matching skills or qualifications>,
+    "relevant_years": <years of relevant experience>,
+    "key_gaps": <number of significant gaps or missing qualifications>
+  },
+  "key_phrases": [
+    "<2-5 short impactful phrases that capture key strengths or gaps>",
+    "Example: Strong technical background in React and TypeScript",
+    "Example: Missing required AWS certification"
+  ],
+  "sections": {
+    "summary": "<Markdown content for Summary of Fit section>",
+    "relevant_experience": "<Markdown content for Relevant Experience section>",
+    "gaps": "<Markdown content for Gaps section>",
+    "recommendations": "<Markdown content for Recommendations section>"
+  }
+}
+
+Sentiment guidelines:
+- strong_match: Candidate exceeds or strongly meets most requirements
+- good_match: Candidate meets core requirements with minor gaps
+- partial_match: Candidate has relevant background but significant gaps exist
+- weak_match: Candidate lacks multiple key qualifications
+
+Ensure each section uses markdown formatting with bullet points, numbered lists, and emphasis where appropriate.
 PROMPT
         ),
     ],
