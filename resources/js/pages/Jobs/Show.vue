@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import InputError from '@/components/InputError.vue';
 import MarkdownViewer from '@/components/MarkdownViewer.vue';
+import EvaluationFeedbackCard from '@/components/EvaluationFeedbackCard.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -65,6 +66,21 @@ interface Evaluation {
     model?: string | null;
     notes?: string | null;
     feedback_markdown?: string | null;
+    feedback_data?: {
+        sentiment?: string;
+        highlights?: {
+            matching_skills?: number;
+            relevant_years?: number;
+            key_gaps?: number;
+        } | null;
+        key_phrases?: string[];
+        sections?: {
+            summary?: string | null;
+            relevant_experience?: string | null;
+            gaps?: string | null;
+            recommendations?: string | null;
+        };
+    } | null;
     error_message?: string | null;
     resume: {
         id?: number | null;
@@ -1458,28 +1474,18 @@ const globalErrors = computed(() => page.props.errors ?? {});
                             </div>
 
                             <div class="space-y-3">
-                                <div
-                                    class="flex flex-wrap items-center justify-between gap-2"
-                                >
-                                    <h3
-                                        class="text-sm font-semibold text-foreground"
-                                    >
+                                <div class="flex flex-wrap items-center justify-between gap-2">
+                                    <h3 class="text-sm font-semibold text-foreground">
                                         Feedback
                                     </h3>
                                     <span class="text-xs text-muted-foreground">
                                         {{ activeEvaluation.model || '—' }}
                                     </span>
                                 </div>
-                                <div
-                                    class="rounded-xl border border-border/60 bg-background/80 p-4"
-                                >
-                                    <MarkdownViewer
-                                        :content="
-                                            activeEvaluation.feedback_markdown ||
-                                            '_Feedback is still processing or unavailable._'
-                                        "
-                                    />
-                                </div>
+                                <EvaluationFeedbackCard
+                                    :feedback-data="activeEvaluation.feedback_data"
+                                    :fallback-markdown="activeEvaluation.feedback_markdown"
+                                />
                             </div>
 
                             <div
