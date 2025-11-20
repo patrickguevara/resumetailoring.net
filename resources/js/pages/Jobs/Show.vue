@@ -1113,7 +1113,7 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                     ? 'border-success/50 bg-success/10 hover:border-success/60 hover:bg-success/15'
                                     : 'border-border/60 bg-background/60 hover:border-primary/60 hover:bg-primary/5',
                             ]"
-                            @click="scrollToSection('company-research')"
+                            @click="scrollToSection('company-research'); showCompanyResearch = true"
                         >
                             <div class="flex items-center gap-3">
                                 <component
@@ -1163,7 +1163,7 @@ const globalErrors = computed(() => page.props.errors ?? {});
                         <button
                             type="button"
                             class="group flex items-center justify-between gap-4 rounded-xl border border-border/60 bg-background/60 px-4 py-3 text-left transition hover:border-primary/60 hover:bg-primary/5"
-                            @click="scrollToSection('job-description')"
+                            @click="scrollToSection('job-description'); showJobDescription = true"
                         >
                             <div class="flex items-center gap-3">
                                 <ScrollText class="size-5 text-primary" />
