@@ -1790,26 +1790,42 @@ const globalErrors = computed(() => page.props.errors ?? {});
 
                     <div
                         id="job-description"
-                        class="rounded-2xl border border-border/60 bg-card/80 p-6 shadow-sm"
+                        class="rounded-2xl border border-border/50 bg-card/80 p-6 shadow-sm"
                     >
-                        <header class="mb-4">
-                            <h2 class="text-lg font-semibold text-foreground">
-                                Job description
-                            </h2>
-                            <p class="text-sm text-muted-foreground">
-                                Reference the source description that current
-                                evaluations use.
-                            </p>
-                        </header>
-                        <div
-                            class="rounded-xl border border-border/60 bg-background/80 p-4"
+                        <header
+                            class="cursor-pointer hover:bg-muted/20 transition rounded-lg -m-2 p-2"
+                            @click="showJobDescription = !showJobDescription"
                         >
-                            <MarkdownViewer
-                                :content="
-                                    job.description_markdown ??
-                                    '*No description stored yet.*'
-                                "
-                            />
+                            <div class="flex items-center justify-between gap-3">
+                                <div>
+                                    <h2 class="text-lg font-semibold text-foreground">
+                                        Job description
+                                    </h2>
+                                    <p
+                                        v-if="!showJobDescription"
+                                        class="text-sm text-muted-foreground"
+                                    >
+                                        Click to view full job description
+                                    </p>
+                                </div>
+                                <ChevronDown
+                                    class="size-5 text-muted-foreground transition-transform duration-200"
+                                    :class="showJobDescription ? 'rotate-180' : ''"
+                                />
+                            </div>
+                        </header>
+
+                        <div v-if="showJobDescription" class="mt-4">
+                            <div
+                                class="rounded-xl border border-border/60 bg-background/80 p-4"
+                            >
+                                <MarkdownViewer
+                                    :content="
+                                        job.description_markdown ??
+                                        '*No description stored yet.*'
+                                    "
+                                />
+                            </div>
                         </div>
                     </div>
 
