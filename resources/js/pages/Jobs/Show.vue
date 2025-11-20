@@ -1077,7 +1077,7 @@ const globalErrors = computed(() => page.props.errors ?? {});
                         <button
                             type="button"
                             class="group flex items-center justify-between gap-4 rounded-xl border border-border/60 bg-background/60 px-4 py-3 text-left transition hover:border-primary/60 hover:bg-primary/5"
-                            @click="scrollToSection('evaluation-details')"
+                            @click="scrollToSection('evaluation-results')"
                         >
                             <div class="flex items-center gap-3">
                                 <FileText class="size-5 text-primary" />
@@ -1375,7 +1375,7 @@ const globalErrors = computed(() => page.props.errors ?? {});
                     </div>
 
                     <div
-                        id="evaluation-details"
+                        id="evaluation-results"
                         class="rounded-2xl border border-border/60 bg-card/80 p-6 shadow-sm"
                     >
                         <header
@@ -1385,11 +1385,10 @@ const globalErrors = computed(() => page.props.errors ?? {});
                                 <h2
                                     class="text-lg font-semibold text-foreground"
                                 >
-                                    Evaluation detail
+                                    Latest evaluation results
                                 </h2>
                                 <p class="text-sm text-muted-foreground">
-                                    Inspect the selected evaluation’s feedback
-                                    and tailored outputs.
+                                    Detailed feedback for the selected evaluation.
                                 </p>
                             </div>
                             <Badge
