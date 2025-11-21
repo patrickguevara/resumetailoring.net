@@ -983,7 +983,7 @@ const globalErrors = computed(() => page.props.errors ?? {});
 
     <AppLayout :breadcrumbs="breadcrumbs">
         <div
-            class="mr-auto w-full max-w-6xl space-y-8 px-6 py-8 xl:max-w-7xl xl:pr-16"
+            class="mr-auto w-full max-w-7xl space-y-8 px-6 py-8 xl:max-w-[90rem] xl:pr-16"
         >
             <section
                 class="rounded-2xl border border-border/60 bg-gradient-to-br from-accent/20 via-background to-background p-6 shadow-sm lg:sticky lg:top-6 lg:z-30"
@@ -1201,7 +1201,7 @@ const globalErrors = computed(() => page.props.errors ?? {});
                 </div>
             </section>
 
-            <div class="mx-auto w-full max-w-4xl space-y-6">
+            <div class="mx-auto w-full max-w-[90rem] space-y-6">
                 <div
                     id="run-evaluation"
                     class="rounded-2xl border border-border/60 bg-card/80 p-6 shadow-sm"

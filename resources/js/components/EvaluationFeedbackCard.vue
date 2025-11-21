@@ -90,7 +90,7 @@ const summaryGradient = computed(() => {
             <!-- Relevant Experience -->
             <section
                 v-if="sections.relevant_experience"
-                class="rounded-2xl border border-border/60 bg-gradient-to-br from-background via-background to-accent/5 p-6 shadow-sm"
+                class="rounded-2xl border border-success/20 bg-gradient-to-br from-success/10 via-success/5 to-transparent p-6 shadow-sm"
             >
                 <h3 class="mb-4 text-lg font-semibold text-foreground">
                     Relevant Experience
@@ -104,17 +104,20 @@ const summaryGradient = computed(() => {
             <!-- Gaps -->
             <section
                 v-if="sections.gaps"
-                class="rounded-2xl border border-border/60 bg-gradient-to-br from-background via-background to-muted/10 p-6 shadow-sm"
+                class="rounded-2xl border border-destructive/20 bg-gradient-to-br from-destructive/10 via-destructive/5 to-transparent p-6 shadow-sm"
             >
                 <h3 class="mb-4 text-lg font-semibold text-foreground">Gaps</h3>
-                <MarkdownViewer :content="sections.gaps" :show-container="false" />
+                <MarkdownViewer
+                    :content="sections.gaps"
+                    :show-container="false"
+                />
             </section>
         </div>
 
         <!-- Recommendations Section (Full Width) -->
         <section
             v-if="sections.recommendations"
-            class="rounded-2xl border border-border/60 bg-gradient-to-br from-primary/5 via-background to-background p-6 shadow-sm"
+            class="rounded-2xl border border-purple-500/20 bg-gradient-to-br from-purple-500/10 via-purple-500/5 to-transparent p-6 shadow-sm"
         >
             <h3 class="mb-4 text-lg font-semibold text-foreground">
                 Recommendations
