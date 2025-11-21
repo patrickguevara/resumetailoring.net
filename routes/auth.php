@@ -26,6 +26,12 @@ Route::middleware('guest')->group(function () {
 
     Route::post('reset-password', [NewPasswordController::class, 'store'])
         ->name('password.store');
+
+    Route::get('auth/linkedin', [App\Http\Controllers\Auth\LinkedInController::class, 'redirect'])
+        ->name('auth.linkedin');
+
+    Route::get('auth/linkedin/callback', [App\Http\Controllers\Auth\LinkedInController::class, 'callback'])
+        ->name('auth.linkedin.callback');
 });
 
 Route::middleware('auth')->group(function () {
