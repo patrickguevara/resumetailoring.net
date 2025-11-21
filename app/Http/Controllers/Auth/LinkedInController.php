@@ -8,6 +8,7 @@ use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Laravel\Socialite\Contracts\User as SocialiteUser;
 use Laravel\Socialite\Facades\Socialite;
 
 class LinkedInController extends Controller
@@ -29,6 +30,14 @@ class LinkedInController extends Controller
     {
         try {
             $linkedInUser = Socialite::driver('linkedin-openid')->user();
+
+            if (! $linkedInUser->getEmail()) {
+                return redirect()->route('login')
+                    ->with('flash', [
+                        'type' => 'error',
+                        'message' => 'Email permission is required to log in with LinkedIn.',
+                    ]);
+            }
 
             return DB::transaction(function () use ($linkedInUser) {
                 // Check if social account already exists
@@ -117,7 +126,7 @@ class LinkedInController extends Controller
     /**
      * Create a new social account record
      */
-    private function createSocialAccount(User $user, $linkedInUser): SocialAccount
+    private function createSocialAccount(User $user, SocialiteUser $linkedInUser): SocialAccount
     {
         return SocialAccount::create([
             'user_id' => $user->id,
@@ -134,7 +143,7 @@ class LinkedInController extends Controller
     /**
      * Update existing social account data
      */
-    private function updateSocialAccountData(SocialAccount $socialAccount, $linkedInUser): void
+    private function updateSocialAccountData(SocialAccount $socialAccount, SocialiteUser $linkedInUser): void
     {
         $socialAccount->update([
             'name' => $linkedInUser->getName(),
