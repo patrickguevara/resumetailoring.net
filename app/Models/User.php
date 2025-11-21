@@ -76,4 +76,23 @@ class User extends Authenticatable
     {
         return $this->hasMany(FeatureUsage::class);
     }
+
+    public function socialAccounts(): HasMany
+    {
+        return $this->hasMany(SocialAccount::class);
+    }
+
+    public function hasLinkedLinkedIn(): bool
+    {
+        return $this->socialAccounts()
+            ->where('provider', 'linkedin-openid')
+            ->exists();
+    }
+
+    public function linkedInAccount(): ?SocialAccount
+    {
+        return $this->socialAccounts()
+            ->where('provider', 'linkedin-openid')
+            ->first();
+    }
 }
