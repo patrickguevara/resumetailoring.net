@@ -30,10 +30,11 @@ Route::middleware('guest')->group(function () {
 
     Route::get('auth/linkedin', [LinkedInController::class, 'redirect'])
         ->name('auth.linkedin');
-
-    Route::get('auth/linkedin/callback', [LinkedInController::class, 'callback'])
-        ->name('auth.linkedin.callback');
 });
+
+// LinkedIn callback needs to be accessible to both guests and authenticated users
+Route::get('auth/linkedin/callback', [LinkedInController::class, 'callback'])
+    ->name('auth.linkedin.callback');
 
 Route::middleware('auth')->group(function () {
     Route::get('verify-email', EmailVerificationPromptController::class)

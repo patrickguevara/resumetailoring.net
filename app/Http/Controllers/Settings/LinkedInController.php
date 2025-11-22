@@ -25,7 +25,7 @@ class LinkedInController extends Controller
                 'avatar' => $linkedInAccount->avatar,
                 'connected_at' => $linkedInAccount->created_at->format('F j, Y'),
             ] : null,
-            'hasPassword' => !is_null($user->password),
+            'hasPassword' => ! is_null($user->password),
         ]);
     }
 
@@ -47,7 +47,7 @@ class LinkedInController extends Controller
 
         $linkedInAccount = $user->linkedInAccount();
 
-        if (!$linkedInAccount) {
+        if (! $linkedInAccount) {
             return redirect()->route('linkedin.settings')
                 ->with('flash', [
                     'type' => 'error',

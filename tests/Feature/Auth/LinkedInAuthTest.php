@@ -5,7 +5,6 @@ namespace Tests\Feature\Auth;
 use App\Models\SocialAccount;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Auth;
 use Laravel\Socialite\Facades\Socialite;
 use Mockery;
 use Tests\TestCase;

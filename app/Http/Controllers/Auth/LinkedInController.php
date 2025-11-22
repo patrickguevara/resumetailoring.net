@@ -48,24 +48,31 @@ class LinkedInController extends Controller
                     ->where('provider_id', $linkedInUser->getId())
                     ->first();
 
-                if ($socialAccount) {
-                    // Social account exists - log in the associated user
-                    Auth::login($socialAccount->user, true);
-
-                    $this->updateSocialAccountData($socialAccount, $linkedInUser);
-
-                    return redirect()->route('dashboard')
-                        ->with('flash', [
-                            'type' => 'success',
-                            'message' => 'Successfully logged in with LinkedIn.',
-                        ]);
-                }
-
                 // Check if user is already logged in (manual linking from settings)
                 if ($currentUser) {
                     $user = $currentUser;
 
-                    // Check if this user already has a LinkedIn account linked
+                    // If this LinkedIn account is already linked to this user, just redirect
+                    if ($socialAccount && $socialAccount->user_id === $user->id) {
+                        $this->updateSocialAccountData($socialAccount, $linkedInUser);
+
+                        return redirect()->route('linkedin.settings')
+                            ->with('flash', [
+                                'type' => 'success',
+                                'message' => 'Your LinkedIn account is already connected.',
+                            ]);
+                    }
+
+                    // If this LinkedIn account is linked to a different user, show error
+                    if ($socialAccount && $socialAccount->user_id !== $user->id) {
+                        return redirect()->route('linkedin.settings')
+                            ->with('flash', [
+                                'type' => 'error',
+                                'message' => 'This LinkedIn account is already linked to another user.',
+                            ]);
+                    }
+
+                    // Check if this user already has a different LinkedIn account linked
                     if ($user->hasLinkedLinkedIn()) {
                         return redirect()->route('linkedin.settings')
                             ->with('flash', [
@@ -83,7 +90,22 @@ class LinkedInController extends Controller
                         ]);
                 }
 
-                // Not logged in - check if email matches existing user
+                // User is not logged in - handle login/registration flows
+
+                // If social account exists, log in the associated user
+                if ($socialAccount) {
+                    Auth::login($socialAccount->user, true);
+
+                    $this->updateSocialAccountData($socialAccount, $linkedInUser);
+
+                    return redirect()->route('dashboard')
+                        ->with('flash', [
+                            'type' => 'success',
+                            'message' => 'Successfully logged in with LinkedIn.',
+                        ]);
+                }
+
+                // Check if email matches existing user
                 $user = User::where('email', $linkedInUser->getEmail())->first();
 
                 if ($user) {

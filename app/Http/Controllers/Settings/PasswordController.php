@@ -19,7 +19,7 @@ class PasswordController extends Controller
         $user = $request->user();
 
         return Inertia::render('settings/Password', [
-            'hasPassword' => !is_null($user->password),
+            'hasPassword' => ! is_null($user->password),
             'hasLinkedIn' => $user->hasLinkedLinkedIn(),
         ]);
     }
