@@ -38,8 +38,8 @@ const currentPasswordInput = ref<HTMLInputElement | null>(null);
         <SettingsLayout>
             <div class="space-y-6">
                 <HeadingSmall
-                    title="Update password"
-                    description="Ensure your account is using a long, random password to stay secure"
+                    :title="hasPassword ? 'Update password' : 'Set password'"
+                    :description="hasPassword ? 'Ensure your account is using a long, random password to stay secure' : 'Create a password to enable email/password login in addition to LinkedIn'"
                 />
 
                 <div
@@ -66,7 +66,7 @@ const currentPasswordInput = ref<HTMLInputElement | null>(null);
                     class="space-y-6"
                     v-slot="{ errors, processing, recentlySuccessful }"
                 >
-                    <div class="grid gap-2">
+                    <div v-if="hasPassword" class="grid gap-2">
                         <Label for="current_password">Current password</Label>
                         <Input
                             id="current_password"
