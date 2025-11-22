@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Settings\BillingController;
 use App\Http\Controllers\Settings\BillingPortalController;
+use App\Http\Controllers\Settings\LinkedInController;
 use App\Http\Controllers\Settings\PasswordController;
 use App\Http\Controllers\Settings\ProfileController;
 use App\Http\Controllers\Settings\SubscriptionCheckoutController;
@@ -32,4 +33,10 @@ Route::middleware('auth')->group(function () {
 
     Route::get('settings/two-factor', [TwoFactorAuthenticationController::class, 'show'])
         ->name('two-factor.show');
+
+    Route::get('settings/linkedin', [LinkedInController::class, 'show'])
+        ->name('linkedin.settings');
+
+    Route::delete('settings/linkedin', [LinkedInController::class, 'destroy'])
+        ->name('linkedin.destroy');
 });

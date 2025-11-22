@@ -48,3 +48,44 @@ test('correct password must be provided to update password', function () {
         ->assertSessionHasErrors('current_password')
         ->assertRedirect(route('password.edit'));
 });
+
+test('linkedin only user can set initial password without current password', function () {
+    $user = User::factory()->withoutPassword()->create();
+
+    expect($user->password)->toBeNull();
+
+    $response = $this
+        ->actingAs($user)
+        ->from(route('password.edit'))
+        ->put(route('password.update'), [
+            'password' => 'new-password',
+            'password_confirmation' => 'new-password',
+        ]);
+
+    $response
+        ->assertSessionHasNoErrors()
+        ->assertRedirect(route('password.edit'));
+
+    expect(Hash::check('new-password', $user->refresh()->password))->toBeTrue();
+});
+
+test('linkedin only user cannot provide current password when setting initial password', function () {
+    $user = User::factory()->withoutPassword()->create();
+
+    expect($user->password)->toBeNull();
+
+    $response = $this
+        ->actingAs($user)
+        ->from(route('password.edit'))
+        ->put(route('password.update'), [
+            'current_password' => 'some-password',
+            'password' => 'new-password',
+            'password_confirmation' => 'new-password',
+        ]);
+
+    $response
+        ->assertSessionHasNoErrors()
+        ->assertRedirect(route('password.edit'));
+
+    expect(Hash::check('new-password', $user->refresh()->password))->toBeTrue();
+});

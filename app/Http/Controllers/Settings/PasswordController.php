@@ -14,9 +14,14 @@ class PasswordController extends Controller
     /**
      * Show the user's password settings page.
      */
-    public function edit(): Response
+    public function edit(Request $request): Response
     {
-        return Inertia::render('settings/Password');
+        $user = $request->user();
+
+        return Inertia::render('settings/Password', [
+            'hasPassword' => ! is_null($user->password),
+            'hasLinkedIn' => $user->hasLinkedLinkedIn(),
+        ]);
     }
 
     /**
@@ -24,12 +29,15 @@ class PasswordController extends Controller
      */
     public function update(Request $request): RedirectResponse
     {
+        $user = $request->user();
+        $hasPassword = ! is_null($user->password);
+
         $validated = $request->validate([
-            'current_password' => ['required', 'current_password'],
+            'current_password' => $hasPassword ? ['required', 'current_password'] : ['nullable'],
             'password' => ['required', Password::defaults(), 'confirmed'],
         ]);
 
-        $request->user()->update([
+        $user->update([
             'password' => $validated['password'],
         ]);
 

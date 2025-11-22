@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Auth\EmailVerificationNotificationController;
 use App\Http\Controllers\Auth\EmailVerificationPromptController;
+use App\Http\Controllers\Auth\LinkedInController;
 use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
@@ -27,6 +28,13 @@ Route::middleware('guest')->group(function () {
     Route::post('reset-password', [NewPasswordController::class, 'store'])
         ->name('password.store');
 });
+
+// LinkedIn OAuth routes need to be accessible to both guests and authenticated users
+Route::get('auth/linkedin', [LinkedInController::class, 'redirect'])
+    ->name('auth.linkedin');
+
+Route::get('auth/linkedin/callback', [LinkedInController::class, 'callback'])
+    ->name('auth.linkedin.callback');
 
 Route::middleware('auth')->group(function () {
     Route::get('verify-email', EmailVerificationPromptController::class)

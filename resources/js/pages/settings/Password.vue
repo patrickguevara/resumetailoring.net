@@ -13,6 +13,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { type BreadcrumbItem } from '@/types';
 
+interface Props {
+    hasPassword: boolean;
+    hasLinkedIn: boolean;
+}
+
+defineProps<Props>();
+
 const breadcrumbItems: BreadcrumbItem[] = [
     {
         title: 'Password settings',
@@ -31,9 +38,24 @@ const currentPasswordInput = ref<HTMLInputElement | null>(null);
         <SettingsLayout>
             <div class="space-y-6">
                 <HeadingSmall
-                    title="Update password"
-                    description="Ensure your account is using a long, random password to stay secure"
+                    :title="hasPassword ? 'Update password' : 'Set password'"
+                    :description="
+                        hasPassword
+                            ? 'Ensure your account is using a long, random password to stay secure'
+                            : 'Create a password to enable email/password login in addition to LinkedIn'
+                    "
                 />
+
+                <div
+                    v-if="hasLinkedIn && !hasPassword"
+                    class="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-900 dark:bg-amber-950"
+                >
+                    <p class="text-sm text-amber-800 dark:text-amber-200">
+                        You're currently using LinkedIn to log in. Setting a
+                        password will give you an alternative way to access your
+                        account.
+                    </p>
+                </div>
 
                 <Form
                     v-bind="PasswordController.update.form()"
@@ -49,7 +71,7 @@ const currentPasswordInput = ref<HTMLInputElement | null>(null);
                     class="space-y-6"
                     v-slot="{ errors, processing, recentlySuccessful }"
                 >
-                    <div class="grid gap-2">
+                    <div v-if="hasPassword" class="grid gap-2">
                         <Label for="current_password">Current password</Label>
                         <Input
                             id="current_password"

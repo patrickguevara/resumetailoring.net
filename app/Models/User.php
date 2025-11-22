@@ -24,6 +24,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'email_verified_at',
     ];
 
     /**
@@ -75,5 +76,24 @@ class User extends Authenticatable
     public function featureUsages(): HasMany
     {
         return $this->hasMany(FeatureUsage::class);
+    }
+
+    public function socialAccounts(): HasMany
+    {
+        return $this->hasMany(SocialAccount::class);
+    }
+
+    public function hasLinkedLinkedIn(): bool
+    {
+        return $this->socialAccounts()
+            ->where('provider', 'linkedin-openid')
+            ->exists();
+    }
+
+    public function linkedInAccount(): ?SocialAccount
+    {
+        return $this->socialAccounts()
+            ->where('provider', 'linkedin-openid')
+            ->first();
     }
 }
