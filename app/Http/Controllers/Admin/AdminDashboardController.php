@@ -7,6 +7,7 @@ use App\Models\CompanyResearch;
 use App\Models\JobDescription;
 use App\Models\Resume;
 use App\Models\ResumeEvaluation;
+use App\Models\SocialAccount;
 use App\Models\TailoredResume;
 use App\Models\User;
 use Inertia\Inertia;
@@ -22,6 +23,11 @@ class AdminDashboardController extends Controller
                 $query->where('stripe_status', 'active');
             })
             ->count();
+
+        $linkedInAccountsCount = SocialAccount::query()
+            ->where('provider', 'linkedin-openid')
+            ->distinct('user_id')
+            ->count('user_id');
 
         $resumesCount = Resume::count();
         $jobDescriptionsCount = JobDescription::count();
@@ -100,6 +106,19 @@ class AdminDashboardController extends Controller
                 'label' => 'Subscriber rate',
                 'value' => $userCount > 0 ? round(($subscriberCount / $userCount) * 100, 1) : 0,
                 'helper' => 'Percent of users on paid plans',
+                'format' => 'percentage',
+            ],
+            [
+                'key' => 'linkedin_accounts',
+                'label' => 'LinkedIn accounts',
+                'value' => $linkedInAccountsCount,
+                'helper' => 'Users who signed up or linked via LinkedIn',
+            ],
+            [
+                'key' => 'linkedin_rate',
+                'label' => 'LinkedIn adoption',
+                'value' => $userCount > 0 ? round(($linkedInAccountsCount / $userCount) * 100, 1) : 0,
+                'helper' => 'Percent of users using LinkedIn login',
                 'format' => 'percentage',
             ],
         ];
