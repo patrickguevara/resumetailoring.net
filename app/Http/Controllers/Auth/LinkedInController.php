@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\SocialAccount;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Laravel\Socialite\Contracts\User as SocialiteUser;
@@ -26,7 +27,7 @@ class LinkedInController extends Controller
     /**
      * Handle LinkedIn OAuth callback
      */
-    public function callback(): RedirectResponse
+    public function callback(Request $request): RedirectResponse
     {
         try {
             $linkedInUser = Socialite::driver('linkedin-openid')->user();
@@ -39,7 +40,9 @@ class LinkedInController extends Controller
                     ]);
             }
 
-            return DB::transaction(function () use ($linkedInUser) {
+            $currentUser = $request->user();
+
+            return DB::transaction(function () use ($linkedInUser, $currentUser) {
                 // Check if social account already exists
                 $socialAccount = SocialAccount::where('provider', 'linkedin-openid')
                     ->where('provider_id', $linkedInUser->getId())
@@ -59,8 +62,8 @@ class LinkedInController extends Controller
                 }
 
                 // Check if user is already logged in (manual linking from settings)
-                if (Auth::check()) {
-                    $user = Auth::user();
+                if ($currentUser) {
+                    $user = $currentUser;
 
                     // Check if this user already has a LinkedIn account linked
                     if ($user->hasLinkedLinkedIn()) {
