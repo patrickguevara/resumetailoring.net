@@ -55,4 +55,30 @@ class UserFactory extends Factory
             'two_factor_confirmed_at' => null,
         ]);
     }
+
+    /**
+     * Indicate that the user has no password (LinkedIn only)
+     */
+    public function withoutPassword(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'password' => null,
+        ]);
+    }
+
+    /**
+     * Indicate that the user has a linked LinkedIn account
+     */
+    public function withLinkedIn(string $linkedInId = 'linkedin-test-123'): static
+    {
+        return $this->afterCreating(function (\App\Models\User $user) use ($linkedInId) {
+            \App\Models\SocialAccount::create([
+                'user_id' => $user->id,
+                'provider' => 'linkedin-openid',
+                'provider_id' => $linkedInId,
+                'name' => $user->name,
+                'email' => $user->email,
+            ]);
+        });
+    }
 }
