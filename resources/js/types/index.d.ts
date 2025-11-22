@@ -95,6 +95,15 @@ export type AppPageProps<
     usageLimit?: UsageLimitNotice | null;
 };
 
+export interface SocialAccount {
+    provider: string;
+    provider_id: string;
+    name: string | null;
+    email: string | null;
+    avatar: string | null;
+    connected_at: string;
+}
+
 export interface User {
     id: number;
     name: string;
@@ -103,6 +112,7 @@ export interface User {
     email_verified_at: string | null;
     created_at: string;
     updated_at: string;
+    has_linked_linkedin?: boolean;
 }
 
 export type BreadcrumbItemType = BreadcrumbItem;
