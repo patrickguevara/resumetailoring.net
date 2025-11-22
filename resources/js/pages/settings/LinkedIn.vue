@@ -13,6 +13,7 @@ import AppLayout from '@/layouts/AppLayout.vue';
 import SettingsLayout from '@/layouts/settings/Layout.vue';
 import { linkedin as linkedinAuth } from '@/routes/auth';
 import linkedin from '@/routes/linkedin';
+import { edit as passwordEdit } from '@/routes/password';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router } from '@inertiajs/vue3';
 import { Linkedin } from 'lucide-vue-next';
@@ -52,7 +53,7 @@ function confirmDisconnect() {
 
 function disconnect() {
     isDisconnecting.value = true;
-    router.delete(route('linkedin.destroy'), {
+    router.delete(linkedin.destroy().url, {
         preserveScroll: true,
         onFinish: () => {
             isDisconnecting.value = false;
@@ -192,7 +193,7 @@ function disconnect() {
                         as-child
                         @click="showDisconnectDialog = false"
                     >
-                        <a :href="route('password.edit')">
+                        <a :href="passwordEdit().url">
                             Go to Password Settings
                         </a>
                     </Button>
