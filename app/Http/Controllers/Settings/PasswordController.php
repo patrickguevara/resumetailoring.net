@@ -14,9 +14,14 @@ class PasswordController extends Controller
     /**
      * Show the user's password settings page.
      */
-    public function edit(): Response
+    public function edit(Request $request): Response
     {
-        return Inertia::render('settings/Password');
+        $user = $request->user();
+
+        return Inertia::render('settings/Password', [
+            'hasPassword' => !is_null($user->password),
+            'hasLinkedIn' => $user->hasLinkedLinkedIn(),
+        ]);
     }
 
     /**

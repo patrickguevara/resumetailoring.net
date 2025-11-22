@@ -13,6 +13,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { type BreadcrumbItem } from '@/types';
 
+interface Props {
+    hasPassword: boolean;
+    hasLinkedIn: boolean;
+}
+
+const props = defineProps<Props>();
+
 const breadcrumbItems: BreadcrumbItem[] = [
     {
         title: 'Password settings',
@@ -34,6 +41,16 @@ const currentPasswordInput = ref<HTMLInputElement | null>(null);
                     title="Update password"
                     description="Ensure your account is using a long, random password to stay secure"
                 />
+
+                <div
+                    v-if="hasLinkedIn && !hasPassword"
+                    class="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-900 dark:bg-amber-950"
+                >
+                    <p class="text-sm text-amber-800 dark:text-amber-200">
+                        You're currently using LinkedIn to log in. Setting a password will give
+                        you an alternative way to access your account.
+                    </p>
+                </div>
 
                 <Form
                     v-bind="PasswordController.update.form()"
