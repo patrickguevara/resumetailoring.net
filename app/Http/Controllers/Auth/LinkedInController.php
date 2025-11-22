@@ -42,6 +42,13 @@ class LinkedInController extends Controller
 
             $currentUser = $request->user();
 
+            \Log::info('LinkedIn OAuth callback', [
+                'linkedin_email' => $linkedInUser->getEmail(),
+                'linkedin_id' => $linkedInUser->getId(),
+                'is_authenticated' => Auth::check(),
+                'current_user_id' => $currentUser?->id,
+            ]);
+
             return DB::transaction(function () use ($linkedInUser, $currentUser) {
                 // Check if social account already exists
                 $socialAccount = SocialAccount::where('provider', 'linkedin-openid')
