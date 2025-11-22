@@ -18,7 +18,7 @@ interface Props {
     hasLinkedIn: boolean;
 }
 
-const props = defineProps<Props>();
+defineProps<Props>();
 
 const breadcrumbItems: BreadcrumbItem[] = [
     {
@@ -39,7 +39,11 @@ const currentPasswordInput = ref<HTMLInputElement | null>(null);
             <div class="space-y-6">
                 <HeadingSmall
                     :title="hasPassword ? 'Update password' : 'Set password'"
-                    :description="hasPassword ? 'Ensure your account is using a long, random password to stay secure' : 'Create a password to enable email/password login in addition to LinkedIn'"
+                    :description="
+                        hasPassword
+                            ? 'Ensure your account is using a long, random password to stay secure'
+                            : 'Create a password to enable email/password login in addition to LinkedIn'
+                    "
                 />
 
                 <div
@@ -47,8 +51,9 @@ const currentPasswordInput = ref<HTMLInputElement | null>(null);
                     class="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-900 dark:bg-amber-950"
                 >
                     <p class="text-sm text-amber-800 dark:text-amber-200">
-                        You're currently using LinkedIn to log in. Setting a password will give
-                        you an alternative way to access your account.
+                        You're currently using LinkedIn to log in. Setting a
+                        password will give you an alternative way to access your
+                        account.
                     </p>
                 </div>
 
