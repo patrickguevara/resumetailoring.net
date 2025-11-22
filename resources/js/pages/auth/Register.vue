@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import AuthBase from '@/layouts/AuthLayout.vue';
 import { login } from '@/routes';
+import { linkedin } from '@/routes/auth';
 import { Form, Head } from '@inertiajs/vue3';
 import { LoaderCircle } from 'lucide-vue-next';
 </script>
@@ -26,7 +27,7 @@ import { LoaderCircle } from 'lucide-vue-next';
         >
             <!-- LinkedIn Signup Button -->
             <a
-                :href="route('auth.linkedin')"
+                :href="linkedin().url"
                 class="flex w-full items-center justify-center gap-2 rounded-md border border-input bg-background px-4 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
             >
                 <svg class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">

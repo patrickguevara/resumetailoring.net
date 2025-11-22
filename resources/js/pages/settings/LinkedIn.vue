@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/dialog';
 import AppLayout from '@/layouts/AppLayout.vue';
 import SettingsLayout from '@/layouts/settings/Layout.vue';
+import { linkedin as linkedinAuth } from '@/routes/auth';
 import linkedin from '@/routes/linkedin';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router } from '@inertiajs/vue3';
@@ -42,7 +43,7 @@ const breadcrumbItems: BreadcrumbItem[] = [
 ];
 
 function connectLinkedIn() {
-    window.location.href = route('auth.linkedin');
+    window.location.href = linkedinAuth().url;
 }
 
 function confirmDisconnect() {
